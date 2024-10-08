@@ -1,6 +1,7 @@
 import socket
 import threading
 import sqlite3
+import time
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((socket.gethostbyname(socket.gethostname()), 9999))
 
@@ -20,36 +21,35 @@ cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT PRIMARY K
 
 
     
-    
+      
 def authentication(connection, address):
     #Get username and password
+    blockLOGIN = False
+    
     while True:
+        #Get LOGIN/REGISTER input
         option = connection.recv(1024).decode('utf-8')
+        
         if option == "LOGIN":
-            LIMIT = 3
-            counter = 0
-            #Technically 4 tries, on the 4th if wrong, says EXCEEDED
-            while True:
-                username, password = connection.recv(1024).decode('utf-8').split()
+            username, password = connection.recv(1024).decode('utf-8').split()
                 
-                #aywa shab el TODOOOO HAHAHAAHAHAHAHAHA
-                #ossa kb
-                # eh wer walaw
-                #TODO: GET SQL DATA FOR USERNAME and PASSWORD
-                
+            #Get user data from the database
+            try:
+                    
                 cursor.execute("SELECT username, password FROM Users WHERE username=? ", (username.lower(),))
-
-                
                 targetUsername, targetPassword = cursor.fetchall()
+                
                 if username == targetUsername and password == targetPassword:
                     connection.sendall("0".encode('utf-8'))
-                    return
-                elif counter == LIMIT:
-                    connection.sendall("-1".encode('utf-8'))
-                    break
+                    return 0
                 else: #Invalid Username or Password
-                    connection.sendall("1".encode('utf-8'))
+                    connection.sendall("1".encode('utf-8'))                        
                     counter+=1
+            except:
+                #if no such account even exists, also say invalid username or password
+                # badkon naamela t2oul no suck account exists mnel ekher?
+                print("No user with that username exists")
+                connection.sendall("1".encode('utf-8'))
                     
                     
         elif option =="REGISTER":
@@ -57,9 +57,11 @@ def authentication(connection, address):
     
     
 def handle_client(connection, address):
-    
     #First authenticate 
-    authentication(connection, address)  
+    #Acts like assert, doesnt prcoeed until we exit from authentication
+    if authentication(connection, address) == -1:
+        connection.close()
+        return
 
 server.listen()
 while True:
