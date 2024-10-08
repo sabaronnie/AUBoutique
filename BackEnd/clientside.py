@@ -6,6 +6,8 @@ import time
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((socket.gethostbyname(socket.gethostname()),9999))
 
+clientIP = socket.getsockname()[0]
+clientPort = socket.getsockname()[1]
 
 def Register():
     client.sendall("REGISTER".encode('utf-8'))
@@ -18,6 +20,7 @@ def Register():
     
     response = client.recv(1024).decode('utf-8')
     if response == "ACCOUNT_CREATED":
+        client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
         return response
     elif response == "ALREADY_EXISTS":
         print("Account already exists. Either login or use a different email or username.")
@@ -41,8 +44,10 @@ def Login(LIMIT, counter):
     
     if response == "0":
         print("Success! Welcome " + username)
+        # Send this client's IP and Port
+        client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
         return "SIGNED_IN"
-    elif counter == "LIMIT":
+    elif counter == LIMIT:
         print("You have failed to login too many times!") 
         print("Please wait 3 minutes to try again.")
         blockLOGIN = True
@@ -97,6 +102,8 @@ def authentication():
         
 def handle_client():
     authentication() 
+    
+    #Now get list of products
 
 
                            
