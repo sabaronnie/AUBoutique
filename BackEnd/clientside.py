@@ -1,12 +1,35 @@
 import socket
 import threading
 import time
+
 #Port = 9999
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((socket.gethostbyname(socket.gethostname()),9999))
 
 
+def Register():
+    client.sendall("REGISTER".encode('utf-8'))
+    name = input("Enter you name: ")
+    email = input("Enter your email: ")
+    username = input("Enter your username: ")
+    password = input("Enter your password: ")
+    message = f"{name} {email} {username} {password}"
+    client.send(message.encode('utf-8'))
+    
+    response = client.recv(1024).decode('utf-8')
+    if response == "ACCOUNT_CREATED":
+        return response
+    elif response == "ALREADY_EXISTS":
+        print("Account already exists. Either login or use a different email or username.")
+        return ""
+        
 def Login(LIMIT, counter):
+    #Ensure you can't login if you got blocked for 3 minutes
+    if blockLOGIN == True:
+        if seconds > 0:
+            print(f"There are {seconds} seconds left till you can attempt a login again.")
+            return "LOGIN_BLOCKED"
+        else: blockLOGIN = False #Reset the login Block
         
     client.sendall("LOGIN".encode('utf-8'))
     
@@ -18,7 +41,7 @@ def Login(LIMIT, counter):
     
     if response == "0":
         print("Success! Welcome " + username)
-        return 0
+        return "SIGNED_IN"
     elif counter == "LIMIT":
         print("You have failed to login too many times!") 
         print("Please wait 3 minutes to try again.")
@@ -26,8 +49,8 @@ def Login(LIMIT, counter):
         timerThread = threading.Thread(target="Timer", args=(180))
         timerThread.start()
         counter = 0
-        break -1
-    elif response == "1":
+        return -1
+    elif response == "INVALID_INFO":
         print("Invalid Username or Password")
         counter+=1
 
@@ -51,35 +74,30 @@ def authentication():
         print("3. EXIT")
         choice = input("")
         
-         # MAX Login Attempts   
-         #Technically 3 tries, on the 3th if wrong, says EXCEEDED 
+        # MAX Login Attempts   
+        #Technically 3 tries, on the 3th if wrong, says EXCEEDED 
         LIMIT = 2
         counter = 0
-        
-        if choice == 1:
-            
-        #Ensure you can't login if you got blocked for 3 minutes
-        if blockLOGIN == True:
-            if seconds > 0:
-                print(f"There are {seconds} seconds left till you can attempt a login again.")
+        #LOGIN
+        if choice == 1:                
+            response = Login(LIMIT, counter)
+            if response == "SIGNED_IN":
+                break
+            elif response == "INVALID_INFO" or response == "LOGIN_BLOCKED":
                 continue
-            else: blockLOGIN = False #Reset the login Block
-        Login(LIMIT, counter)
             
-            
-            
-            
-            
-        elif choice == 'n':
-            client.sendall("REGISTER".encode('utf-8'))
-            name = input("Enter you name: ")
-            email = input("Enter your email: ")
-            username = input("Enter your username: ")
-            password = input("Enter your password: ")
-            message = f"{name} {email} {username} {password}"
-            client.send(message.encode('utf-8'))
+        elif choice == 2:
+            if Register() == "ACCOUNT_CREATED":
+                #exit authentication. now you're logged in, mabrouk
+                return
+                
+        elif choice == 3:
+            #terminate completely
+            break
         
-        
+def handle_client():
+    authentication() 
+
 
                            
          

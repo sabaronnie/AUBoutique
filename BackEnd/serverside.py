@@ -6,6 +6,7 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((socket.gethostbyname(socket.gethostname()), 9999))
 
 db = sqlite3.connect('db.AUBoutique')
+db.execute("PRAGMA foreign_keys=on")
 cursor = db.cursor()
 #hayda l part mafroud ykoun bi while loop in order to take many clients.
 #check tahet
@@ -16,16 +17,21 @@ cursor = db.cursor()
 
 #TABLE INFO:
 # - Username always stored in lower case
-cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT PRIMARY KEY, username TEXT, password TEXT)") #name, email address, username, and password.
+cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, username TEXT PRIMARY KEY UNIQUE, password TEXT)") #name, email address, username, and password.
+
+# ONLINE LIST OF USERS
+cursor.execute("CREATE TABLE if not exists Online(username TEXT, FOREIGN_KEY(username) REFERENCES Users(username))") 
 
 
+def setOnline(username):
+    cursor.execute("INSERT INTO Online values(?)", (username))
 
+# TODO: When you terminate client, or decide to log out, use this
+def removeOnline(username):
+    cursor.execute("DELETE FROM Online WHERE username=?", (username))
     
-      
 def authentication(connection, address):
     #Get username and password
-    blockLOGIN = False
-    
     while True:
         #Get LOGIN/REGISTER input
         option = connection.recv(1024).decode('utf-8')
@@ -41,6 +47,8 @@ def authentication(connection, address):
                 
                 if username == targetUsername and password == targetPassword:
                     connection.sendall("0".encode('utf-8'))
+                    # Set signed in user as online
+                    setOnline(username)
                     return 0
                 else: #Invalid Username or Password
                     connection.sendall("1".encode('utf-8'))                        
@@ -53,7 +61,17 @@ def authentication(connection, address):
                     
                     
         elif option =="REGISTER":
-            name, email, username, password = connection.recv(1024).decode('utf-8').split()`
+            try:
+            # Register then logs you in
+                name, email, username, password = connection.recv(1024).decode('utf-8').split()
+                cursor.execute("INSERT INTO Users values(?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password))
+                connection.send("ACCOUNT_CREATED".encode('utf-8'))
+                setOnline(username)
+            except:
+                print("Account already exists. Duplicate detected.")
+                connection.send("ACCOUNT_CREATED".encode('utf-8'))
+                
+            
     
     
 def handle_client(connection, address):
