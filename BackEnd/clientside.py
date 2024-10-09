@@ -36,7 +36,7 @@ def Login(LIMIT, counter):
         
     client.sendall("LOGIN".encode('utf-8'))
     
-    # Get username and password, send it to server, and ger response depending on validity
+    # Get username and password, send it to server, and get response depending on validity
     username = input("Username: ")
     password = input("Password: ")
     client.sendall(f"{username} {password}".encode('utf-8'))
@@ -99,12 +99,32 @@ def authentication():
         elif choice == 3:
             #terminate completely
             break
-        
+
+#mnaamel handling functions la kel choice w mnerjaa mnaamella call bel main function tahet
+def add_product():
+    product_name = input("Product name: ")
+    price = input("Price: ")
+    description = input("Description: ")
+    client.send("ADD_PRODUCT".encode('utf-8'))
+    client.send(f"{product_name} {price} {description}".encode('utf-8'))
+    
 def handle_client():
     authentication() 
     
     #Now get list of products
-
+    #Display list of options to client 
+    while True:
+        print("1. Add a Product")
+        print("2. List Products")
+        print("3. List products")
+        print("4. Send Message")
+        print("5. Log Out")
+        
+        choice = input("Enter you choice: ")
+        
+        if choice == '1':
+            add_product()
+        
 
                            
          

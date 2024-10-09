@@ -25,14 +25,16 @@ cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT
 
 # PRODUCT LIST
 cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, FOREIGN_KEY(username) REFERENCES Users(username))") 
-
-
+db.commit()
+    
 def setOnline(username, ip, port):
     cursor.execute("INSERT INTO Online values(?, ?, )", (username, ip, port))
-
+    db.commit()
+    
 # TODO: When you terminate client, or decide to log out, use this
 def removeOnline(username):
     cursor.execute("DELETE FROM Online WHERE username=?", (username))
+    db.commit()
     
 def authentication(connection, address):
     #Get username and password
@@ -54,7 +56,7 @@ def authentication(connection, address):
                     clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
                     # Set signed in user as online
                     setOnline(username, clientIP, clientPort)
-                    return 0
+                    return username
                 else: #Invalid Username or Password
                     connection.sendall("1".encode('utf-8'))                        
                     counter+=1
@@ -79,14 +81,37 @@ def authentication(connection, address):
                 connection.send("ACCOUNT_CREATED".encode('utf-8'))
                 
             
-    
-    
+#Handle add product
+def add_product(connection, username):
+    try:
+        product_name, price, description = connection.recv(1024).decode('utf-8').split()
+        cursor.execute("INSERT INTO Products(username, product_name, price, description) VALUES(?, ?, ?, ?)", (username, product_name, float(price), description))
+        db.commit()
+        connection.send("PRODUCT_ADDED".encode('utf-8'))
+    except Exception as e:
+        connection.send("ERROR: Cannot ADD product".encode('utf-8'))
+
 def handle_client(connection, address):
     #First authenticate 
     #Acts like assert, doesnt prcoeed until we exit from authentication
     if authentication(connection, address) == -1:
         connection.close()
         return
+    while True:
+        option = connection.recv(1024).decode('utf-8')
+        username = authentication(connection, address)
+        
+        if not username:
+            connection.close()
+            return 
+        
+        if option == "ADD_PRODUCT":
+            add_product(connection, username)
+        #zet l shi la be2e l options (LIST_PRODUCTS, ...)
+   
+        
+        
+    
 
 server.listen()
 while True:
