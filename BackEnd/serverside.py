@@ -21,10 +21,10 @@ cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, u
 
 # ONLINE LIST OF USERS
 # contains IP and Port
-cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN_KEY(username) REFERENCES Users(username))") 
+cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 # PRODUCT LIST
-cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, FOREIGN_KEY(username) REFERENCES Users(username))") 
+cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
     
 def setOnline(username, ip, port):
@@ -46,31 +46,35 @@ def authentication(connection, address):
             username, password = connection.recv(1024).decode('utf-8').split()
                 
             #Get user data from the database
-            try:
-                    
-                cursor.execute("SELECT username, password FROM Users WHERE username=? ", (username.lower(),))
-                targetUsername, targetPassword = cursor.fetchall()
+            try:      
+                #Already checks for username
+                cursor.execute("SELECT password FROM Users WHERE username=? ", (username.lower(),))
+                targetPassword = cursor.fetchall() #check that this is not rendered between parentheses.
                 
-                if username == targetUsername and password == targetPassword:
-                    connection.sendall("0".encode('utf-8'))
+                if  password == targetPassword:
+                    connection.sendall("CORRECT".encode('utf-8'))
                     clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
                     # Set signed in user as online
                     setOnline(username, clientIP, clientPort)
                     return username
-                else: #Invalid Username or Password
-                    connection.sendall("1".encode('utf-8'))                        
+                else: #Invalid Password
+                    connection.sendall("INVALID_PASSWORD".encode('utf-8'))                        
                     counter+=1
             except:
                 #if no such account even exists, also say invalid username or password
                 # badkon naamela t2oul no suck account exists mnel ekher?
                 print("No user with that username exists")
-                connection.sendall("1".encode('utf-8'))
+                connection.sendall("INVALID_INFO".encode('utf-8'))
                     
                     
         elif option =="REGISTER":
             try:
             # Register then logs you in
                 name, email, username, password = connection.recv(1024).decode('utf-8').split()
+                # print(name)
+                # print(email)
+                # print(username)
+                # print(password)
                 cursor.execute("INSERT INTO Users values(?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password))
                 connection.send("ACCOUNT_CREATED".encode('utf-8'))
                 
@@ -78,7 +82,7 @@ def authentication(connection, address):
                 setOnline(username, clientIP, clientPort)
             except:
                 print("Account already exists. Duplicate detected.")
-                connection.send("ACCOUNT_CREATED".encode('utf-8'))
+                connection.send("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
                 
             
 #Handle add product
@@ -97,6 +101,8 @@ def handle_client(connection, address):
     if authentication(connection, address) == -1:
         connection.close()
         return
+    
+    print("Welcome")
     while True:
         option = connection.recv(1024).decode('utf-8')
         username = authentication(connection, address)
@@ -116,7 +122,7 @@ def handle_client(connection, address):
 server.listen()
 while True:
     connection,address= server.accept()
-    server_thread = threading.Thread(target="handle_client", args=("connection", "address"))
+    server_thread = threading.Thread(target=handle_client, args=(connection, address))
     server_thread.start()
     
 
