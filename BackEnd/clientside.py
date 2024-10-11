@@ -169,6 +169,11 @@ def add_product():
     client.send("ADD_PRODUCT".encode('utf-8'))
     client.send(f"{product_name} {price} {description}".encode('utf-8'))
     
+    
+#kind of recursion, do i keep?
+def LogOut():
+    handle_client()
+    
 def handle_client():
     authentication() 
     
@@ -177,7 +182,7 @@ def handle_client():
     while True:
         print("1. Add a Product")
         print("2. List Products")
-        print("3. List products")
+        print("3. View Someone's Products")
         print("4. Send Message")
         print("5. Log Out")
         
@@ -185,5 +190,8 @@ def handle_client():
         
         if choice == '1':
             add_product()
+        elif choice == '4':
+            LogOut()
+            
         
 handle_client()

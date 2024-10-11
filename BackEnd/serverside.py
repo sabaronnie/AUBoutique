@@ -36,7 +36,7 @@ def removeOnline(username):
     cursor.execute("DELETE FROM Online WHERE username=?", (username))
     db.commit()
     
-def authentication(connection, address):
+def authentication(connection, address, cursor):
     #Get username and password
     while True:
         #Get LOGIN/REGISTER input
@@ -65,6 +65,7 @@ def authentication(connection, address):
                 # badkon naamela t2oul no suck account exists mnel ekher?
                 print("No user with that username exists")
                 connection.sendall("INVALID_INFO".encode('utf-8'))
+                return -1
                     
                     
         elif option =="REGISTER":
@@ -80,9 +81,13 @@ def authentication(connection, address):
                 
                 clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
                 setOnline(username, clientIP, clientPort)
-            except:
+                
+                return username
+            except sqlite3.IntegrityError:
                 print("Account already exists. Duplicate detected.")
                 connection.send("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
+                return -1
+
                 
             
 #Handle add product
@@ -96,16 +101,22 @@ def add_product(connection, username):
         connection.send("ERROR: Cannot ADD product".encode('utf-8'))
 
 def handle_client(connection, address):
+    
+    db = sqlite3.connect('db.AUBoutique')
+    # db.execute("PRAGMA foreign_keys=on")
+    cursor = db.cursor()
+    
     #First authenticate 
     #Acts like assert, doesnt prcoeed until we exit from authentication
-    if authentication(connection, address) == -1:
+    myUsername = authentication(connection, address, cursor) 
+    if myUsername == -1:
         connection.close()
         return
     
     print("Welcome")
     while True:
         option = connection.recv(1024).decode('utf-8')
-        username = authentication(connection, address)
+        username = myUsername
         
         if not username:
             connection.close()
@@ -125,6 +136,17 @@ while True:
     server_thread = threading.Thread(target=handle_client, args=(connection, address))
     server_thread.start()
     
+
+
+
+
+
+
+
+
+
+
+
 
 
 
