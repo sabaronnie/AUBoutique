@@ -103,24 +103,17 @@ def add_product(connection, username):
 def handle_client(connection, address):
     
     db = sqlite3.connect('db.AUBoutique')
-    # db.execute("PRAGMA foreign_keys=on")
     cursor = db.cursor()
     
-    #First authenticate 
     #Acts like assert, doesnt prcoeed until we exit from authentication
     myUsername = authentication(connection, address, cursor) 
     if myUsername == -1:
         connection.close()
         return
     
-    print("Welcome")
     while True:
         option = connection.recv(1024).decode('utf-8')
         username = myUsername
-        
-        if not username:
-            connection.close()
-            return 
         
         if option == "ADD_PRODUCT":
             add_product(connection, username)
