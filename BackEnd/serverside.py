@@ -77,6 +77,7 @@ def authentication(connection, address, cursor):
                 # print(username)
                 # print(password)
                 cursor.execute("INSERT INTO Users values(?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password))
+                db.commit()
                 connection.send("ACCOUNT_CREATED".encode('utf-8'))
                 
                 clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
@@ -94,7 +95,7 @@ def authentication(connection, address, cursor):
 def add_product(connection, username):
     try:
         product_name, price, description = connection.recv(1024).decode('utf-8').split()
-        cursor.execute("INSERT INTO Products(username, product_name, price, description) VALUES(?, ?, ?, ?)", (username, product_name, float(price), description))
+        cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?)", (username, product_name, float(price), description))
         db.commit()
         connection.send("PRODUCT_ADDED".encode('utf-8'))
     except Exception as e:
