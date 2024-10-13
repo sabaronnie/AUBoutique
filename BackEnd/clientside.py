@@ -14,25 +14,34 @@ def passwordValidate(password):
     character_MaxLength = 64
     size = len(password)
     if size <= character_MaxLength and size >= character_MinLength :
-        d
+        # what other condtions do i add
+        print("bravo")
     else: raise ValueError("Your password has to be ATLEAST 8 characters and LESS than 64 characters.")
     
 def Register():
-    client.sendall("REGISTER".encode('utf-8'))
-    name = input("Enter you name: ")
-    email = input("Enter your email: ")
-    username = input("Enter your username: ")
-    password = input("Enter your password: ")
-    message = f"{name} {email} {username} {password}"
-    client.send(message.encode('utf-8'))
-    response = client.recv(1024).decode('utf-8')
-    if response == "ACCOUNT_CREATED":
-        print("RIGHT HERE")
-        client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
-        return response
-    elif response == "ACCOUNT_ALREADY_EXISTS":
-        print("Account already exists. Either login or use a different email or username.")
-        return ""
+    while True:
+        try:
+            client.sendall("REGISTER".encode('utf-8'))
+            name = input("Enter you name: ")
+            email = input("Enter your email: ")
+            username = input("Enter your username: ")
+            password = input("Enter your password: ")
+            passwordValidate()
+            
+            message = f"{name} {email} {username} {password}"
+            client.send(message.encode('utf-8'))
+            response = client.recv(1024).decode('utf-8')
+            if response == "ACCOUNT_CREATED":
+                print("RIGHT HERE")
+                client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
+                return response
+            elif response == "ACCOUNT_ALREADY_EXISTS":
+                print("Account already exists. Either login or use a different email or username.")
+                return ""
+            break
+        except ValueError:
+            print("Password does not meet the necessary requirements.")
+            print("- Atleast 8 characters, Less than 64 characters")
         
 seconds = 0
 def Timer (countDown):
