@@ -101,28 +101,12 @@ def authentication(connection, address, cursor, db):
 # def addSpaces(file1):
     
 def sendProducts(connection):
-    #file1 = open("ServerFiles/toBePrinted", 'a')
-    #cursor.execute("SELECT * FROM Products")
-    #10 spaces
-    #file1.write("Username")
-    #addSpaces()
-    #file1.write("Product Name")        
-    #addSpaces()
-    #file1.write("Price (in $)")       
-    #addSpaces()
-    #file1.write("Description")
-    # Create a PrettyTable object
-    #eemol save now
-    #ehh
-    #saveeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
-    #save now
-    #bye
-    
-    #3melet dw
-    #yalla gna test the code hdar
+
     table = PrettyTable()
 
-    # Define the column names
+    ##SEND AS JSONN 
+    # cuz when we mae gui, we cant use pretty tables sl we need to be 
+    # ready to read the file
     connection.send("Alice 25 New_York tete".encode('utf-8'))
 
     # t1 = cursor.fetchall()
