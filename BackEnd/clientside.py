@@ -2,7 +2,11 @@ import socket
 import threading
 import time
 import os
+import sys
 import pickle
+
+sys.path.append("BackEnd/modules") 
+
 from prettytable import PrettyTable
 
 #Port = 9999
@@ -18,7 +22,7 @@ clientPort = client.getsockname()[1]
 
 # aam jarb its loading
 def Sign_In_Animation():
-    counter = 3
+    counter = 2
     emptyTerminal()
     while counter > 0:
         print("Signing in", end= "", flush=True)    
@@ -35,10 +39,11 @@ def Sign_In_Animation():
     # emptyTerminal()
 
 def emptyTerminal():
-    if os.name == 'nt':  # For Windows
-        os.system('cls')
-    else:  # For Linux and macOS
-        os.system('clear')
+    print("")
+    # if os.name == 'nt':  # For Windows
+    #     os.system('cls')
+    # else:  # For Linux and macOS
+    #     os.system('clear')
 
 def passwordValidate(password):
     character_MinLength = 8
@@ -102,14 +107,19 @@ def Login(LIMIT):
     counter = 0
 
     client.sendall("LOGIN".encode('utf-8'))
+    invalidPassword = False
     while True: 
         # Get username and password, send it to server, and get response depending on validity
-        emptyTerminal()
+        #emptyTerminal()
+
         if counter == LIMIT:
             if seconds > 0:
                 print(f"There are {seconds} seconds left till you can attempt a login again.")
                 return "LOGIN_BLOCKED"
             else: counter=0 #Reset the login Block
+            
+        if invalidPassword:
+            print("Invalid Password, Please try again.")
             
         username = input("Username: ")
         password = input("Password: ")
@@ -124,9 +134,11 @@ def Login(LIMIT):
             client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
             return "SIGNED_IN"
         elif response == "INVALID_PASSWORD":
+            invalidPassword = True
             print("Invalid Password")
             counter+=1
         elif response == "INVALID_INFO":
+            invalidPassword = True
             print("Invalid Username or Password")
             counter+=1
         if counter == LIMIT:
@@ -181,13 +193,15 @@ def priceValidate(price):
         raise ValueError("Less than 1") 
     
 def add_product():
+    client.send("ADD_PRODUCT".encode('utf-8'))
+    print(client.recv(1024).decode('utf-8'))
     while True:
         try: 
             product_name = input("Product name: ")
             price = input("Price: ")
             priceValidate(price)
             description = input("Description: ")
-            client.send("ADD_PRODUCT".encode('utf-8'))
+
             client.send(f"{product_name} {price} {description}".encode('utf-8'))
             
             response = client.recv(1024).decode('utf-8')
@@ -202,26 +216,70 @@ def add_product():
     
 #kind of recursion, do i keep?
 def LogOut():
+    # TODO remove user from online database from here too
     handle_client()
 
 def list_products():
     client.send("SEND_PRODUCTS".encode('utf-8'))
+    n = int(client.recv(1024).decode('utf-8'))
+    client.send("Received number of products".encode('utf-8'))
     
-    #f = open("Reading.txt", 'rb')
-    name, age, city, rando = client.recv(1024).decode('utf-8').split()
-    # pickle.loads(the_table)
-    
-    # print(the_table)
     table = PrettyTable()
     table.field_names = ["Username", "Product Name", "Price (in $)", "Description"]
-
-    # Add rows to the table
-    table.add_row([name, age, city, rando])
-    table.add_row(["Bob", 30, "San Francisco", "etet"])
-    table.add_row(["Charlie", 35, "Chicago", "jre"])
-
+    for i in range(n):
+        temporary = client.recv(1024)
+        temporary = pickle.loads(temporary)
+        table.add_row([temporary[0], temporary[1], temporary[2], temporary[3]])
     # Print the table
     print(table)
+    
+    
+def getOnlineUsers():
+    onlineUsers = client.recv(1024)
+    onlineUsers = pickle.loads(onlineUsers)
+    
+    for i in range(1, len(onlineUsers)+1):
+        print(i + "- " + onlineUsers[i-1])
+    
+def msgGUI():
+    print(">>")
+    print("Please pick the user you want to message: ")
+    getOnlineUsers()
+    
+def openChat():
+    #jds
+    print("")
+# TODO: receive list of online users
+def sendMessage():
+    client.send("MSG".encode('utf-8'))
+    while True:
+        msgGUI()
+        
+        target = input("")
+        client.send(target.encode('utf-8'))
+        response = client.recv(1024).decode('utf-8')
+        if response == "NOT_ONLINE":
+            print("No such user exists")
+        elif response =="FOUND":
+            openChat()
+            
+def viewUsersProducts():
+    client.send("VIEW_USERS_PRODUCTS".encode('utf-8'))
+    client.recv(1024)
+    username = input("Enter the username of the user whose products you want to see.")
+    client.send(username.encode('utf-8'))
+    n1 = (int) (client.recv(1024).decode('utf-8'))
+    table = prettyTable()
+    table.add_fields("Product Name", "Price (in $)", "Description")
+    for i in range(n1):
+     temporary = client.recv(1024)
+     temporary = pickle.loads(temporary)
+     table.add_row(temporary[0], temporary[1], temporary[2])
+     
+    
+
+
+        
     
     
 def handle_client():
@@ -237,6 +295,7 @@ def handle_client():
         print(lol)
         
         while True:
+            emptyTerminal()
             list_products()
             print("<<")
             print("1. Add a Product")
@@ -248,8 +307,11 @@ def handle_client():
             
             if choice == '1':
                 add_product()
+            elif choice == '2':
+                viewUsersProducts()
+            elif choice == '3':
+                sendMessage()
             elif choice == '4':
                 LogOut()
-            
         
 handle_client()

@@ -2,7 +2,7 @@ import socket
 import threading
 import sqlite3
 import time
-from prettytable import PrettyTable
+
 import pickle
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((socket.gethostbyname(socket.gethostname()), 9999))
@@ -23,17 +23,22 @@ cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, u
 
 # ONLINE LIST OF USERS
 # contains IP and Port
-cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, in_chat TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 # PRODUCT LIST
 #ADD IMAGES
 cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, price INT, desc TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
-    
+
 def setOnline(username, ip, port, cursor, db):
-    cursor.execute("INSERT INTO Online values(?, ?, ?)", (username, ip, port))
+    cursor.execute("INSERT INTO Online values(?, ?, ?, ?)", (username, ip, port, "false"))
     db.commit()
     
+def enableChat(username):
+    cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
+    
+def disableChat(username):
+    cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
 # TODO: When you terminate client, or decide to log out, use this
 def removeOnline(username):
     cursor.execute("DELETE FROM Online WHERE username=?", (username))
@@ -97,30 +102,82 @@ def authentication(connection, address, cursor, db):
                 connection.send("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
                 return -1
         
+
         
 # def addSpaces(file1):
     
-def sendProducts(connection):
+def sendProducts(connection, db):
 
-    table = PrettyTable()
-
+    cursor = db.cursor()
     ##SEND AS JSONN 
     # cuz when we mae gui, we cant use pretty tables sl we need to be 
     # ready to read the file
-    connection.send("Alice 25 New_York tete".encode('utf-8'))
+  
+    
+    cursor.execute("SELECT * FROM Products GROUP BY username")
+    productsByUser = cursor.fetchall()
+    connection.send(str(len(productsByUser)).encode('utf-8'))
+    connection.recv(1024)
 
+    for i in range(len(productsByUser)):
+        connection.send(pickle.dumps(productsByUser[i]))
     # t1 = cursor.fetchall()
     # file1.write(t1)
     # file1.close()
     # file2 = open("ServerFiles/toBePrinted", 'rb')
     # for lines in file2:
     #     connection.send(lines)
-    
 
-                
+#"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+def sendUsersProducts(connection, db):
+    cursor = db.cursor()
+    connection.send("Function of sending users products now open".encode('utf-8'))
+    username = connection.recv(1024).decode('utf-8')
+    cursor.execute("SELECT product_name, price, desc FROM Products WHERE username = ?", username)
+    usersProducts = cursor.fetchall()
+    connection.send(int(len(usersProducts())))
+    
+    for i in range(len(usersProducts)):
+        connection.send(pickle.dumps(usersProducts[i]))
+    
+    
+    
+def sendOnlineUsers(connection, cursor):
+    cursor.execute("SELECT username FROM Online")
+    onlineUsers = cursor.fetchall()
+    
+    for i in range(len(onlineUsers)):
+        connection.send(pickle.dumps(onlineUsers[i]))
+    #connection.send("<END>".encode('uf-8'))
+
+
+def openChat(cursor, targetDetails):
+    cursor.execute("SELECT in_chat FROM Online WHERE username=?", (targetDetails[0][0]))
+    
+    
+def sendMessage(connection, db):
+    cursor = db.cursor()
+    enableChat()
+    sendOnlineUsers(connection)
+
+    try:
+    
+        target = connection.recv(1024).decode('utf-8')
+        cursor.execute("SELECT username, ip_address, port FROM Online WHERE username=?", (target))
+        targetDetails = cursor.fetchall()
+        connection.send("FOUND".encode('utf-8'))
+        
+        openChat(cursor, targetDetails)    
+    except:
+        connection.send("NOT_ONLINE".encode('utf-8'))
+        
+    
+    
+        
             
 #Handle add product
 def add_product(connection, username,cursor,  db):
+    connection.send("Opened add products now.".encode('utf-8'))
     try:
         product_name, price, description = connection.recv(1024).decode('utf-8').split()
         print (product_name)
@@ -152,7 +209,11 @@ def handle_client(connection, address):
         if option == "ADD_PRODUCT":
             add_product(connection, username, cursor, db)
         elif option == "SEND_PRODUCTS":
-            sendProducts(connection)
+            sendProducts(connection, db)
+        elif option ==  "VIEW_USERS_PRODUCTS":
+            sendUsersProducts()
+        elif option =="MSG":
+            sendMessage(connection, db)
         #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
         
