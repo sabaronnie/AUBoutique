@@ -217,6 +217,13 @@ def add_product():
 #kind of recursion, do i keep?
 def LogOut():
     # TODO remove user from online database from here too
+    print("Logging out...)
+    client.send("LOGOUT".encode('utf-8'))
+    response = client.recv(1024).decode('utf-8')
+    if response == "LOGOUT_SUCCESS":
+        print("You have been successfully logged out.")
+    else:
+        print("Error logging out, please try again.")
     handle_client()
 
 def list_products():
