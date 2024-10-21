@@ -217,14 +217,14 @@ def add_product():
 #kind of recursion, do i keep?
 def LogOut():
     # TODO remove user from online database from here too
-    print("Logging out...)
+    print("Logging out...")
     client.send("LOGOUT".encode('utf-8'))
-    response = client.recv(1024).decode('utf-8')
+    response = client.recv(1024).decode('utf-8') #Wait for confirmation from server
     if response == "LOGOUT_SUCCESS":
         print("You have been successfully logged out.")
     else:
         print("Error logging out, please try again.")
-    handle_client()
+    handle_client() #Display menu
 
 def list_products():
     client.send("SEND_PRODUCTS".encode('utf-8'))
@@ -254,21 +254,40 @@ def msgGUI():
     getOnlineUsers()
     
 def openChat():
-    #jds
+    print("Chat opened. Type 'exit' to close the chat.")
+    while True:
+        message = input("You: ")
+        if message.lower() == "exit": 
+            client.send("EXIT_CHAT".encode('utf-8'))
+            break
+        else:
+            client.send(message.encode('utf-8'))
+            response = client.recv(1024).decode('utf-8')
+            if response == "EXIT_CHAT":
+                print("User has left the chat.")
+                break
+            print("Them: " + response)
+                
+        
+    
     print("")
+    
 # TODO: receive list of online users
 def sendMessage():
     client.send("MSG".encode('utf-8'))
     while True:
         msgGUI()
         
-        target = input("")
-        client.send(target.encode('utf-8'))
+        target = input("Pick the user to message (or type 'exit' to cancel): ")
+        if target.lower() == "exit": #Exit if user cancels
+            return
+        client.send(target.encode('utf-8')) #Send target username to server
         response = client.recv(1024).decode('utf-8')
         if response == "NOT_ONLINE":
-            print("No such user exists")
+            print("The selected user is not currently online. Please choose another user.")
         elif response =="FOUND":
             openChat()
+            break
             
 def viewUsersProducts():
     client.send("VIEW_USERS_PRODUCTS".encode('utf-8'))

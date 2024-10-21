@@ -158,20 +158,20 @@ def openChat(cursor, targetDetails):
 def sendMessage(connection, db):
     cursor = db.cursor()
     enableChat()
-    sendOnlineUsers(connection)
+    sendOnlineUsers(connection, cursor)
 
     try:
-    
         target = connection.recv(1024).decode('utf-8')
         cursor.execute("SELECT username, ip_address, port FROM Online WHERE username=?", (target))
         targetDetails = cursor.fetchall()
         connection.send("FOUND".encode('utf-8'))
-        
         openChat(cursor, targetDetails)    
     except:
         connection.send("NOT_ONLINE".encode('utf-8'))
         
-    
+def logOutUser(connection, username, cursor, db):
+     removeOnline(username, cursor, db)
+     connection.send("LOGOUT_SUCCESS".encode('utf-8'))
     
         
             
