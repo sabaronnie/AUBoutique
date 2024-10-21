@@ -248,46 +248,95 @@ def getOnlineUsers():
     for i in range(1, len(onlineUsers)+1):
         print(i + "- " + onlineUsers[i-1])
     
-def msgGUI():
+def msgGUI(USER_UNAVAILABLE):
     print(">>")
-    print("Please pick the user you want to message: ")
+    print("Pick the user to message (or type 'exit' to cancel):")
     getOnlineUsers()
     
-def openChat():
+    print()
+    if USER_UNAVAILABLE:
+        print("This user is no longer available")
+        return -1
+    return 0
+    
+def openChat(target):
+    print(">>> ", target.upper())
     print("Chat opened. Type 'exit' to close the chat.")
     while True:
-        message = input("You: ")
+        message = input("Enter: ")
         if message.lower() == "exit": 
             client.send("EXIT_CHAT".encode('utf-8'))
             break
         else:
+            print("You: ", message)
             client.send(message.encode('utf-8'))
             response = client.recv(1024).decode('utf-8')
             if response == "EXIT_CHAT":
                 print("User has left the chat.")
                 break
-            print("Them: " + response)
+            print(target + ": " + response)
                 
         
     
     print("")
     
-# TODO: receive list of online users
-def sendMessage():
-    client.send("MSG".encode('utf-8'))
+    
+def receiveMessage():
+    print("")
+    #as soon as possible, called
+    # client sock waiting for server to tell it to open chat
+    # if called,
+    
+     #send messages()
+     #takes a message and sends it to the server
+     #receive message()
+     #receives a message from the serverprint("")
+    
+def listenForIncomingChatRequest():
     while True:
-        msgGUI()
+        client.recv(1024).decode('utf-8')
+        #get signal from server that ronnie wants to open chat
+        #get ronnies name
         
-        target = input("Pick the user to message (or type 'exit' to cancel): ")
-        if target.lower() == "exit": #Exit if user cancels
-            return
-        client.send(target.encode('utf-8')) #Send target username to server
-        response = client.recv(1024).decode('utf-8')
-        if response == "NOT_ONLINE":
-            print("The selected user is not currently online. Please choose another user.")
-        elif response =="FOUND":
-            openChat()
-            break
+        #now open the chat
+        #if ronnie sends msg, see it
+        # if i send msg, send it to ronnie
+        
+def handle_messaging():
+    client.send("MSG".encode('utf-8'))
+    USER_UNAVAILABLE = False
+    while True:
+        print(">> MESSAGING")
+        print("1. Open a chat with someone")
+        print("2. Accept an incoming chat request")
+        option = input("")
+
+        #do input validation here later
+        if option == "1":
+            client.send("INITIATE_CHAT".encode('utf-8'))
+            if msgGUI(USER_UNAVAILABLE) == -1:
+                USER_UNAVAILABLE = False
+            
+            target = input("")
+            if target.lower() == "exit": #Exit if user cancels
+                return
+            client.send(target.encode('utf-8')) #Send target username to server
+            response = client.recv(1024).decode('utf-8')
+            if response == "NOT_ONLINE":
+                print("The selected user is not currently online. Please choose another user.")
+            elif response =="FOUND":
+                response = client.recv(1024).decode('utf-8')
+                #if the user went unavailable since u last printed the table
+                if response == "USER_UNAVAILABLE":
+                    USER_UNAVAILABLE = True
+                    continue
+                
+                openChat(target)
+        elif option == "2":
+            client.send("LISTEN_FOR_CHAT".encode('utf-8'))
+            listenForIncomingChatRequest()
+
+                
             
 def viewUsersProducts():
     client.send("VIEW_USERS_PRODUCTS".encode('utf-8'))
@@ -336,7 +385,7 @@ def handle_client():
             elif choice == '2':
                 viewUsersProducts()
             elif choice == '3':
-                sendMessage()
+                handle_messaging()
             elif choice == '4':
                 LogOut()
         

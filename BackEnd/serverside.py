@@ -143,7 +143,7 @@ def sendUsersProducts(connection, db):
     
     
 def sendOnlineUsers(connection, cursor):
-    cursor.execute("SELECT username FROM Online")
+    cursor.execute("SELECT username FROM Online WHERE in_chat=true")
     onlineUsers = cursor.fetchall()
     
     for i in range(len(onlineUsers)):
@@ -151,21 +151,39 @@ def sendOnlineUsers(connection, cursor):
     #connection.send("<END>".encode('uf-8'))
 
 
-def openChat(cursor, targetDetails):
-    cursor.execute("SELECT in_chat FROM Online WHERE username=?", (targetDetails[0][0]))
+def openChat(connection, cursor, targetDetails):
+    disableChat()
+    targetUser, targetIP, targetPort, in_chat = targetDetails
+    while True:
+
+        messageToSend = connection.recv(1024).decode('utf-8')
+        if messageToSend.lower() == "exit": 
+            connection.send("EXIT_CHAT".encode('utf-8'))
+            break
+        
     
     
-def sendMessage(connection, db):
+    
+    
+    
+def handle_messaging(connection, db):
     cursor = db.cursor()
     enableChat()
     sendOnlineUsers(connection, cursor)
 
     try:
+        option = connection.recv(1024).decode('utf-8')
+        
         target = connection.recv(1024).decode('utf-8')
-        cursor.execute("SELECT username, ip_address, port FROM Online WHERE username=?", (target))
+        cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target))
         targetDetails = cursor.fetchall()
         connection.send("FOUND".encode('utf-8'))
-        openChat(cursor, targetDetails)    
+        
+        status = targetDetails[0][3] #in_chat
+        if status == "true":
+            openChat(connection, cursor, targetDetails)   
+        else:
+            connection.send("USER_UNAVAILABLE".encode('utf-8')) 
     except:
         connection.send("NOT_ONLINE".encode('utf-8'))
         
