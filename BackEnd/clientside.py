@@ -70,8 +70,7 @@ def Register():
             
             passwordValidate(password)
             
-            
-            message = f"{name} {email} {username} {password}"
+            message = f"{name},{email},{username},{password}"
             client.send(message.encode('utf-8'))
             response = client.recv(1024).decode('utf-8')
             if response == "ACCOUNT_CREATED":
@@ -202,8 +201,9 @@ def add_product():
             priceValidate(price)
             description = input("Description: ")
 
-            client.send(f"{product_name} {price} {description}".encode('utf-8'))
+            client.send(f"{product_name},{price},{description}".encode('utf-8'))
             
+            #list_products1()
             response = client.recv(1024).decode('utf-8')
             if response == "PRODUCT_ADDED":
                 print("Product was successfully added.")
@@ -217,6 +217,7 @@ def add_product():
 #kind of recursion, do i keep?
 def LogOut():
     # TODO remove user from online database from here too
+    client.send("LOG_OUT".encode('utf-8'))
     print("Logging out...")
     client.send("LOGOUT".encode('utf-8'))
     response = client.recv(1024).decode('utf-8') #Wait for confirmation from server
@@ -235,11 +236,12 @@ def list_products():
     table.field_names = ["Username", "Product Name", "Price (in $)", "Description"]
     for i in range(n):
         temporary = client.recv(1024)
+        client.send("OK".encode('utf-8'))
         temporary = pickle.loads(temporary)
         table.add_row([temporary[0], temporary[1], temporary[2], temporary[3]])
     # Print the table
     print(table)
-    
+
     
 def getOnlineUsers():
     onlineUsers = client.recv(1024)
@@ -344,18 +346,17 @@ def viewUsersProducts():
     username = input("Enter the username of the user whose products you want to see.")
     client.send(username.encode('utf-8'))
     n1 = (int) (client.recv(1024).decode('utf-8'))
-    table = prettyTable()
-    table.add_fields("Product Name", "Price (in $)", "Description")
+    table = PrettyTable()
+    table.field_names = ["Product Name", "Price (in $)", "Description"]
     for i in range(n1):
-     temporary = client.recv(1024)
-     temporary = pickle.loads(temporary)
-     table.add_row(temporary[0], temporary[1], temporary[2])
-     
-    
-
-
+        temporary = client.recv(1024)
+        temporary = pickle.loads(temporary)
+        client.send("OK".encode('utf-8'))
+        table.add_row([temporary[0], temporary[1], temporary[2]])
         
-    
+    print(table)
+
+     
     
 def handle_client():
     
@@ -371,6 +372,7 @@ def handle_client():
         
         while True:
             emptyTerminal()
+            print("listproducts bro")
             list_products()
             print("<<")
             print("1. Add a Product")

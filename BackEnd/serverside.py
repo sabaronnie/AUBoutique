@@ -38,9 +38,11 @@ def enableChat(username):
     cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
     
 def disableChat(username):
+
     cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
 # TODO: When you terminate client, or decide to log out, use this
-def removeOnline(username):
+def removeOnline(username, db):
+    cursor = db.cursor()
     cursor.execute("DELETE FROM Online WHERE username=?", (username))
     db.commit()
     
@@ -81,8 +83,8 @@ def authentication(connection, address, cursor, db):
         elif option =="REGISTER":
             try:
             # Register then logs you in
-            
-                name, email, username, password = connection.recv(1024).decode('utf-8').split()
+                
+                name, email, username, password = connection.recv(1024).decode('utf-8').split(",")
                 print(name)
                 print(email)
                 print(username)
@@ -114,13 +116,14 @@ def sendProducts(connection, db):
     # ready to read the file
   
     
-    cursor.execute("SELECT * FROM Products GROUP BY username")
+    cursor.execute("SELECT * FROM Products")
     productsByUser = cursor.fetchall()
     connection.send(str(len(productsByUser)).encode('utf-8'))
-    connection.recv(1024)
-
+    response = connection.recv(1024).decode('utf-8')
+    print(response)
     for i in range(len(productsByUser)):
-        connection.send(pickle.dumps(productsByUser[i]))
+        connection.sendall(pickle.dumps(productsByUser[i]))
+        connection.recv(1024)
     # t1 = cursor.fetchall()
     # file1.write(t1)
     # file1.close()
@@ -133,19 +136,17 @@ def sendUsersProducts(connection, db):
     cursor = db.cursor()
     connection.send("Function of sending users products now open".encode('utf-8'))
     username = connection.recv(1024).decode('utf-8')
-    cursor.execute("SELECT product_name, price, desc FROM Products WHERE username = ?", username)
+    cursor.execute("SELECT product_name, price, desc FROM Products WHERE username = ?", (username,))
     usersProducts = cursor.fetchall()
-    connection.send(int(len(usersProducts())))
+    connection.send(str(len(usersProducts)).encode('utf-8'))
     
     for i in range(len(usersProducts)):
         connection.send(pickle.dumps(usersProducts[i]))
-    
-    
+        connection.recv(1024)
     
 def sendOnlineUsers(connection, cursor):
     cursor.execute("SELECT username FROM Online WHERE in_chat=true")
     onlineUsers = cursor.fetchall()
-    
     for i in range(len(onlineUsers)):
         connection.send(pickle.dumps(onlineUsers[i]))
     #connection.send("<END>".encode('uf-8'))
@@ -188,7 +189,7 @@ def handle_messaging(connection, db):
         connection.send("NOT_ONLINE".encode('utf-8'))
         
 def logOutUser(connection, username, cursor, db):
-     removeOnline(username, cursor, db)
+     removeOnline(username, db)
      connection.send("LOGOUT_SUCCESS".encode('utf-8'))
     
         
@@ -197,14 +198,18 @@ def logOutUser(connection, username, cursor, db):
 def add_product(connection, username,cursor,  db):
     connection.send("Opened add products now.".encode('utf-8'))
     try:
-        product_name, price, description = connection.recv(1024).decode('utf-8').split()
+        product_name, price, description = connection.recv(1024).decode('utf-8').split(",")
         print (product_name)
         print(price)
         print(description)
         print(username)
         cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?)", (username, product_name, float(price), description))
         db.commit()
+
+        #sendProducts(connection, db)
         connection.send("PRODUCT_ADDED".encode('utf-8'))
+
+
     except Exception as e:
         connection.send("ERROR: Cannot ADD product".encode('utf-8'))
 
@@ -229,9 +234,11 @@ def handle_client(connection, address):
         elif option == "SEND_PRODUCTS":
             sendProducts(connection, db)
         elif option ==  "VIEW_USERS_PRODUCTS":
-            sendUsersProducts()
+            sendUsersProducts(connection, db)
         elif option =="MSG":
-            sendMessage(connection, db)
+            handle_messaging(connection, db)
+        elif option =="LOG_OUT":
+            logOutUser(connection, username, cursor, db)
         #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
         
