@@ -4,6 +4,10 @@ import time
 import os
 import sys
 import pickle
+from datetime import date, timedelta
+#yalla btjarib l 2 clients?
+
+
 
 sys.path.append("modules") 
 
@@ -244,9 +248,11 @@ def list_products():
 
     
 def getOnlineUsers():
+    print("uh")
     onlineUsers = client.recv(1024)
+    print("bruv")
     onlineUsers = pickle.loads(onlineUsers)
-    
+    print("WHYYYY")
     for i in range(1, len(onlineUsers)+1):
         print(i + "- " + onlineUsers[i-1])
     
@@ -257,7 +263,7 @@ def msgGUI(USER_UNAVAILABLE):
     
     print()
     if USER_UNAVAILABLE:
-        print("This user is no longer available")
+        print("The user you previously selected is no longer available")
         return -1
     return 0
     
@@ -282,6 +288,15 @@ def openChat(target):
     
     print("")
     
+    #mabrouk aam shufak
+    #tmm
+#waitt
+#can u move this
+#atashet my msging code bl nos
+#eh eh sure
+#hbb
+
+
     
 def receiveMessage():
     print("")
@@ -296,14 +311,14 @@ def receiveMessage():
     
 def listenForIncomingChatRequest():
     while True:
-        client.recv(1024).decode('utf-8')
+        status = client.recv(1024).decode('utf-8') #do timeout later TODO
         #get signal from server that ronnie wants to open chat
         #get ronnies name
         
         #now open the chat
         #if ronnie sends msg, see it
         # if i send msg, send it to ronnie
-        
+
 def handle_messaging():
     client.send("MSG".encode('utf-8'))
     USER_UNAVAILABLE = False
@@ -319,11 +334,13 @@ def handle_messaging():
             if msgGUI(USER_UNAVAILABLE) == -1:
                 USER_UNAVAILABLE = False
             
+            print("kkkkkkkk")
             target = input("")
             if target.lower() == "exit": #Exit if user cancels
                 return
             client.send(target.encode('utf-8')) #Send target username to server
             response = client.recv(1024).decode('utf-8')
+            
             if response == "NOT_ONLINE":
                 print("The selected user is not currently online. Please choose another user.")
             elif response =="FOUND":
@@ -338,6 +355,22 @@ def handle_messaging():
             client.send("LISTEN_FOR_CHAT".encode('utf-8'))
             listenForIncomingChatRequest()
 
+
+def buyProducts():
+    client.send("SEND_PRODUCTS".encode('utf-8'))
+    client.recv(1024)
+    product = input("Which product would you like to buy? ")
+    client.send(product.encode('utf-8'))
+    client.recv(1024)
+    client.send("Thanks".encode('utf-8'))
+    client.recv(1024)
+    currentdate = date.today()
+    currentdate = currentdate + timedelta(days = 7)
+    #add a check incase product is invalid or unavailable
+    #so only print this if server sends you the product name back
+    message = "Your " +  product +  " will be available at the AUB Post Office from " + str(currentdate)
+    message += "\nAUB Post Office Working Hours: 8:00 a.m. till 4:00 p.m." 
+    print(message)
                 
             
 def viewUsersProducts():
@@ -378,7 +411,8 @@ def handle_client():
             print("1. Add a Product")
             print("2. View Someone's Products")
             print("3. Send Message")
-            print("4. Log Out")
+            print("4. Buy a Product")
+            print("5. Log Out")
             
             choice = input("Enter you choice: ")
             
@@ -389,6 +423,8 @@ def handle_client():
             elif choice == '3':
                 handle_messaging()
             elif choice == '4':
+                buyProducts()
+            elif choice == '5':
                 LogOut()
         
 handle_client()

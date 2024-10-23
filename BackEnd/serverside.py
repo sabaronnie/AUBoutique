@@ -2,7 +2,8 @@ import socket
 import threading
 import sqlite3
 import time
-
+from queue import Queue
+from datetime import date, timedelta
 import pickle
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((socket.gethostbyname(socket.gethostname()), 9999))
@@ -34,11 +35,12 @@ def setOnline(username, ip, port, cursor, db):
     cursor.execute("INSERT INTO Online values(?, ?, ?, ?)", (username, ip, port, "false"))
     db.commit()
     
-def enableChat(username):
+def enableChat(username, db):
+    cursor = db.cursor()
     cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
     
-def disableChat(username):
-
+def disableChat(username, db):
+    cursor = db.cursor()
     cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
 # TODO: When you terminate client, or decide to log out, use this
 def removeOnline(username, db):
@@ -132,6 +134,7 @@ def sendProducts(connection, db):
     #     connection.send(lines)
 
 #"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+
 def sendUsersProducts(connection, db):
     cursor = db.cursor()
     connection.send("Function of sending users products now open".encode('utf-8'))
@@ -147,44 +150,91 @@ def sendUsersProducts(connection, db):
 def sendOnlineUsers(connection, cursor):
     cursor.execute("SELECT username FROM Online WHERE in_chat=true")
     onlineUsers = cursor.fetchall()
-    for i in range(len(onlineUsers)):
-        connection.send(pickle.dumps(onlineUsers[i]))
+    print("BEFORE LOL")
+    connection.sendall(pickle.dumps(onlineUsers))
+    print("LOLLL")
+    # for i in range(len(onlineUsers)):
+    #     connection.send(pickle.dumps(onlineUsers[i]))
     #connection.send("<END>".encode('uf-8'))
 
+def buyProducts(connection, cursor):
+    connection.send("".encode('utf-8'))
+    product = connection.recv(1024).decode('utf-8')
+    connection.send("Product name received".encode('utf-8'))
+    cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
+    connection.recv(1024)
+    connection.send("toni".encode('utf-8'))
+    #iza badak make a random number generator
+    #to decide how much time till u get the item
+    
+    
+    
 
-def openChat(connection, cursor, targetDetails):
-    disableChat()
-    targetUser, targetIP, targetPort, in_chat = targetDetails
+#make it a queue 
+SenderToReceiver = Queue()
+def sendChatSENDER(connection):
+    global SenderToReceiver
+    #targetUser, targetIP, targetPort, in_chat = targetDetails
     while True:
-
         messageToSend = connection.recv(1024).decode('utf-8')
         if messageToSend.lower() == "exit": 
             connection.send("EXIT_CHAT".encode('utf-8'))
             break
+        SenderToReceiver.put(messageToSend)
+        print(messageToSend)
+        
+def receiveChatRECEIVER(connection):
+    while True:
+        global SenderToReceiver
+        sendMsg = SenderToReceiver.get()
+        connection.send(sendMsg.encode('utf-8'))
+        
+ReceiverToSender = Queue()
+def receiveChatSENDER(connection, cursor, targetDetails):
+    global ReceiverToSender
+    while True:
+        sendMsg = ReceiverToSender.get()
+        connection.send(sendMsg.encode('utf-8'))
+
+def sendChatRECEIVER(connection):
+    global ReceiverToSender
+    while True:
+        messageToSend = connection.recv(1024).decode('utf-8')
+        if messageToSend.lower() == "exit": 
+            connection.send("EXIT_CHAT".encode('utf-8'))
+            break
+        ReceiverToSender.put(messageToSend)
         
     
     
-    
-    
-    
-def handle_messaging(connection, db):
+def handle_messaging(username, connection, db):
     cursor = db.cursor()
-    enableChat()
     sendOnlineUsers(connection, cursor)
 
     try:
         option = connection.recv(1024).decode('utf-8')
-        
-        target = connection.recv(1024).decode('utf-8')
-        cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target))
-        targetDetails = cursor.fetchall()
-        connection.send("FOUND".encode('utf-8'))
-        
-        status = targetDetails[0][3] #in_chat
-        if status == "true":
-            openChat(connection, cursor, targetDetails)   
-        else:
-            connection.send("USER_UNAVAILABLE".encode('utf-8')) 
+        if option == "INITIATE_CHAT": #sends chat request for somekne waiting
+            target = connection.recv(1024).decode('utf-8')
+            cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
+            targetDetails = cursor.fetchall()
+            connection.send("FOUND".encode('utf-8'))
+            
+            status = targetDetails[0][3] #in_chat
+            if status == "true":
+                sending_thread = threading.Thread(target=sendChatSENDER, args=(connection,))
+                receiving_thread = threading.Thread(target=receiveChatSENDER, args=(connection,))
+                sending_thread.start()
+                receiving_thread.start()
+            else:
+                connection.send("USER_UNAVAILABLE".encode('utf-8')) 
+        elif option == "LISTEN_FOR_CHAT":
+            enableChat(username, db)
+            connection.send("OPEN")
+            sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
+            receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
+            sending_thread.start()
+            receiving_thread.start()
+            
     except:
         connection.send("NOT_ONLINE".encode('utf-8'))
         
@@ -236,9 +286,11 @@ def handle_client(connection, address):
         elif option ==  "VIEW_USERS_PRODUCTS":
             sendUsersProducts(connection, db)
         elif option =="MSG":
-            handle_messaging(connection, db)
+            handle_messaging(myUsername, connection, db)
         elif option =="LOG_OUT":
             logOutUser(connection, username, cursor, db)
+        elif option == "BUY_PRODUCTS":
+            buyProducts(connection, cursor)
         #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
         
