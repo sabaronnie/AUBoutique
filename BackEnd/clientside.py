@@ -5,7 +5,7 @@ import os
 import sys
 import pickle
 
-sys.path.append("BackEnd/modules") 
+sys.path.append("modules") 
 
 from prettytable import PrettyTable
 
