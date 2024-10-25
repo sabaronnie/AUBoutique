@@ -267,7 +267,7 @@ def msgGUI(USER_UNAVAILABLE):
         return -1
     return 0
     
-def openChat(target):
+def sendChat(target):
     print(">>> ", target.upper())
     print("Chat opened. Type 'exit' to close the chat.")
     while True:
@@ -278,40 +278,38 @@ def openChat(target):
         else:
             print("You: ", message)
             client.send(message.encode('utf-8'))
-            response = client.recv(1024).decode('utf-8')
-            if response == "EXIT_CHAT":
-                print("User has left the chat.")
-                break
-            print(target + ": " + response)
+        
                 
         
     
     print("")
     
-    #mabrouk aam shufak
-    #tmm
-#waitt
-#can u move this
-#atashet my msging code bl nos
-#eh eh sure
-#hbb
-
-
+def receiveChat(target):
+    while True:
+        response = client.recv(1024).decode('utf-8')
+        if response == "EXIT_CHAT":
+            print("User has left the chat.")
+            break
+        print(target + ": " + response)
     
-def receiveMessage():
-    print("")
-    #as soon as possible, called
-    # client sock waiting for server to tell it to open chat
-    # if called,
     
-     #send messages()
-     #takes a message and sends it to the server
-     #receive message()
-     #receives a message from the serverprint("")
     
 def listenForIncomingChatRequest():
     while True:
-        status = client.recv(1024).decode('utf-8') #do timeout later TODO
+        senderUser = client.recv(1024).decode('utf-8') #do timeout later TODO
+        
+        print("INCOMING..")
+        print(senderUser + " would like to open a chat with you.")
+        print("Would you like to accept? Y/N")
+        choice = input("")
+        #do input validation here
+        if choice.lower() == "y":
+            sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
+            receiving_thread = threading.Thread(target=receiveChat, args=(senderUser,))
+            sending_thread.start()
+            receiving_thread.start()
+
+            
         #get signal from server that ronnie wants to open chat
         #get ronnies name
         
@@ -344,13 +342,17 @@ def handle_messaging():
             if response == "NOT_ONLINE":
                 print("The selected user is not currently online. Please choose another user.")
             elif response =="FOUND":
-                response = client.recv(1024).decode('utf-8')
+                # response = client.recv(1024).decode('utf-8')
                 #if the user went unavailable since u last printed the table
-                if response == "USER_UNAVAILABLE":
-                    USER_UNAVAILABLE = True
-                    continue
+                # if response == "USER_UNAVAILABLE":
+                #     USER_UNAVAILABLE = True
+                #     continue
                 
-                openChat(target)
+                #Send a chat request
+                sending_thread = threading.Thread(target=sendChat, args=(target,))
+                receiving_thread = threading.Thread(target=receiveChat, args=(target,))
+                sending_thread.start()
+                receiving_thread.start()
         elif option == "2":
             client.send("LISTEN_FOR_CHAT".encode('utf-8'))
             listenForIncomingChatRequest()

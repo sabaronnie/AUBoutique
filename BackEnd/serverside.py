@@ -168,72 +168,76 @@ def buyProducts(connection, cursor):
     #to decide how much time till u get the item
     
     
-    
+OnlineUserConnections = {}
+threadLocks = {}
 
 #make it a queue 
-SenderToReceiver = Queue()
-def sendChatSENDER(connection):
-    global SenderToReceiver
+def sendChatSENDER(username, connection):
     #targetUser, targetIP, targetPort, in_chat = targetDetails
+    targetConnection = OnlineUserConnections[username]
     while True:
         messageToSend = connection.recv(1024).decode('utf-8')
         if messageToSend.lower() == "exit": 
             connection.send("EXIT_CHAT".encode('utf-8'))
             break
-        SenderToReceiver.put(messageToSend)
+        targetConnection.send(messageToSend)
         print(messageToSend)
         
-def receiveChatRECEIVER(connection):
-    while True:
-        global SenderToReceiver
-        sendMsg = SenderToReceiver.get()
-        connection.send(sendMsg.encode('utf-8'))
+# def receiveChatRECEIVER(connection):
+#     while True:
+#         global SenderToReceiver
+#         sendMsg = SenderToReceiver.get()
+#         connection.send(sendMsg.encode('utf-8'))
         
-ReceiverToSender = Queue()
-def receiveChatSENDER(connection, cursor, targetDetails):
-    global ReceiverToSender
-    while True:
-        sendMsg = ReceiverToSender.get()
-        connection.send(sendMsg.encode('utf-8'))
+# 
 
-def sendChatRECEIVER(connection):
-    global ReceiverToSender
-    while True:
-        messageToSend = connection.recv(1024).decode('utf-8')
-        if messageToSend.lower() == "exit": 
-            connection.send("EXIT_CHAT".encode('utf-8'))
-            break
-        ReceiverToSender.put(messageToSend)
-        
+ 
     
     
 def handle_messaging(username, connection, db):
     cursor = db.cursor()
     sendOnlineUsers(connection, cursor)
-
     try:
         option = connection.recv(1024).decode('utf-8')
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
+
             target = connection.recv(1024).decode('utf-8')
-            cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
-            targetDetails = cursor.fetchall()
-            connection.send("FOUND".encode('utf-8'))
-            
-            status = targetDetails[0][3] #in_chat
-            if status == "true":
-                sending_thread = threading.Thread(target=sendChatSENDER, args=(connection,))
-                receiving_thread = threading.Thread(target=receiveChatSENDER, args=(connection,))
-                sending_thread.start()
-                receiving_thread.start()
+            #cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
+            #targetDetails = cursor.fetchall()
+            if target in OnlineUserConnections:
+                connection.send("FOUND".encode('utf-8'))
+                
+                targetConnection = OnlineUserConnections[target]
+                #Make them online 
+                if username not in OnlineUserConnections:
+                    OnlineUserConnections[username] = connection
+                
+                targetTHREADLOCK = threadLocks[target]
+                targetTHREADLOCK.acquire()
+                #send a msg request to user
+                targetConnection.send(username.encode('utf-8'))
+                sendChatSENDER(username, connection)
+                
+                targetTHREADLOCK.release()
             else:
-                connection.send("USER_UNAVAILABLE".encode('utf-8')) 
+                connection.send("NOT_ONLINE".encode('utf-8'))
+
+            #add later a check that the user is still available at this point
+            
+            
+            
+                # sending_thread = threading.Thread(target=sendChatSENDER, args=(connection,))
+                # receiving_thread = threading.Thread(target=receiveChatSENDER, args=(connection,))
+                # sending_thread.start()
+                # receiving_thread.start()
         elif option == "LISTEN_FOR_CHAT":
-            enableChat(username, db)
-            connection.send("OPEN")
-            sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
-            receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
-            sending_thread.start()
-            receiving_thread.start()
+            if username not in OnlineUserConnections:
+                OnlineUserConnections[username] = connection
+            #connection.send("OPEN")
+            # sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
+            # receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
+            # sending_thread.start()
+            # receiving_thread.start()
             
     except:
         connection.send("NOT_ONLINE".encode('utf-8'))
@@ -275,7 +279,12 @@ def handle_client(connection, address):
         connection.close()
         return
     
+    threadLocks[myUsername] = threading.Lock()
+    
+    
     while True:
+        threadLocks[myUsername].acquire()
+        threadLocks[myUsername].release()
         option = connection.recv(1024).decode('utf-8')
         username = myUsername
         
