@@ -124,9 +124,14 @@ def Login(LIMIT):
             
         if invalidPassword:
             print("Invalid Password, Please try again.")
+            invalidPassword = False
             
         username = input("Username: ")
         password = input("Password: ")
+        
+        #AUTO SIGN IN
+        # username = "ron"
+        # password = "12345678"
         
         client.sendall(f"{username} {password}".encode('utf-8'))
         response = client.recv(1024).decode('utf-8')
@@ -299,12 +304,7 @@ def receiveChat(target):
     
 def listenForIncomingChatRequest():
     while True:
-        while True:
-            try:
-                senderUser = client.recv(1024).decode('utf-8') #do timeout later TODO
-                break
-            except Exception as e:
-                print(type(e).__name__)
+        senderUser = client.recv(5000).decode('utf-8', errors='replace') #do timeout later TODO
                 
         
         print("INCOMING..")

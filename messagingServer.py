@@ -6,7 +6,7 @@ from queue import Queue
 from datetime import date, timedelta
 import pickle
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((socket.gethostbyname(socket.gethostname()), 9999))
+server.bind((socket.gethostbyname(socket.gethostname()), 8888))
 
 db = sqlite3.connect('db.AUBoutique')
 db.execute("PRAGMA foreign_keys=on")
@@ -106,72 +106,18 @@ def authentication(connection, address, cursor, db):
                 connection.sendall("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
                 return -1
         
-
         
-# def addSpaces(file1):
-    
-def sendProducts(connection, db):
+OnlineUserConnections = {}
+threadLocks = {}
+threadEvents = {}
 
-    cursor = db.cursor()
-    ##SEND AS JSONN 
-    # cuz when we mae gui, we cant use pretty tables sl we need to be 
-    # ready to read the file
-  
-    
-    cursor.execute("SELECT * FROM Products")
-    productsByUser = cursor.fetchall()
-    connection.sendall(str(len(productsByUser)).encode('utf-8'))
-    response = connection.recv(1024).decode('utf-8')
-    print(response)
-    for i in range(len(productsByUser)):
-        connection.sendall(pickle.dumps(productsByUser[i]))
-        connection.recv(1024)
-    # t1 = cursor.fetchall()
-    # file1.write(t1)
-    # file1.close()
-    # file2 = open("ServerFiles/toBePrinted", 'rb')
-    # for lines in file2:
-    #     connection.sendall(lines)
 
-#"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
-
-def sendUsersProducts(connection, db):
-    cursor = db.cursor()
-    connection.sendall("Function of sending users products now open".encode('utf-8'))
-    username = connection.recv(1024).decode('utf-8')
-    cursor.execute("SELECT product_name, price, desc FROM Products WHERE username = ?", (username,))
-    usersProducts = cursor.fetchall()
-    connection.sendall(str(len(usersProducts)).encode('utf-8'))
-    
-    for i in range(len(usersProducts)):
-        connection.sendall(pickle.dumps(usersProducts[i]))
-        connection.recv(1024)
-    
 def sendOnlineUsers(connection, cursor):
     cursor.execute("SELECT username FROM Online WHERE in_chat=true")
     onlineUsers = cursor.fetchall()
     print("BEFORE LOL")
     connection.sendall(pickle.dumps(onlineUsers))
     print("LOLLL")
-    # for i in range(len(onlineUsers)):
-    #     connection.sendall(pickle.dumps(onlineUsers[i]))
-    #connection.sendall("<END>".encode('uf-8'))
-
-def buyProducts(connection, cursor):
-    connection.sendall("".encode('utf-8'))
-    product = connection.recv(1024).decode('utf-8')
-    connection.sendall("Product name received".encode('utf-8'))
-    cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
-    connection.recv(1024)
-    connection.sendall("toni".encode('utf-8'))
-    #iza badak make a random number generator
-    #to decide how much time till u get the item
-    
-    
-OnlineUserConnections = {}
-threadLocks = {}
-threadEvents = {}
-
 #make it a queue 
 def sendChatSENDER(username,target, connection):
     #targetUser, targetIP, targetPort, in_chat = targetDetails
@@ -240,8 +186,10 @@ def handle_messaging(username, connection, db):
                 # sending_thread.start()
                 # receiving_thread.start()
         elif option == "LISTEN_FOR_CHAT":
+            print("woslit")
             if username not in OnlineUserConnections:
                 OnlineUserConnections[username] = connection
+            print('woslit2')
             threadEvents[username].wait()
             threadEvents[username].clear()
             print("WOOP WOOP")
@@ -256,31 +204,7 @@ def handle_messaging(username, connection, db):
     except:
         connection.sendall("NOT_ONLINE".encode('utf-8'))
         
-def logOutUser(connection, username, cursor, db):
-     removeOnline(username, db)
-     connection.sendall("LOGOUT_SUCCESS".encode('utf-8'))
-    
         
-            
-#Handle add product
-def add_product(connection, username,cursor,  db):
-    connection.sendall("Opened add products now.".encode('utf-8'))
-    try:
-        product_name, price, description = connection.recv(1024).decode('utf-8').split(",")
-        print (product_name)
-        print(price)
-        print(description)
-        print(username)
-        cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?)", (username, product_name, float(price), description))
-        db.commit()
-
-        #sendProducts(connection, db)
-        connection.sendall("PRODUCT_ADDED".encode('utf-8'))
-
-
-    except Exception as e:
-        connection.sendall("ERROR: Cannot ADD product".encode('utf-8'))
-
 def handle_client(connection, address):
     
     db = sqlite3.connect('db.AUBoutique')
@@ -302,20 +226,11 @@ def handle_client(connection, address):
         # threadLocks[myUsername].release()
         print("SOMEHOW WE BACK HERE")
         option = connection.recv(1024).decode('utf-8')
-        username = myUsername
         
-        if option == "ADD_PRODUCT":
-            add_product(connection, username, cursor, db)
-        elif option == "SEND_PRODUCTS":
-            sendProducts(connection, db)
-        elif option ==  "VIEW_USERS_PRODUCTS":
-            sendUsersProducts(connection, db)
-        elif option =="MSG":
+
+        if option =="MSG":
             handle_messaging(myUsername, connection, db)
-        elif option =="LOG_OUT":
-            logOutUser(connection, username, cursor, db)
-        elif option == "BUY_PRODUCTS":
-            buyProducts(connection, cursor)
+
         #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
         
@@ -328,9 +243,6 @@ while True:
     server_thread = threading.Thread(target=handle_client, args=(connection, address))
     server_thread.start()
     
-
-
-
 
 
 
