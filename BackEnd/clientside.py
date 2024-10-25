@@ -26,19 +26,20 @@ clientPort = client.getsockname()[1]
 
 # aam jarb its loading
 def Sign_In_Animation():
-    counter = 2
-    emptyTerminal()
-    while counter > 0:
-        print("Signing in", end= "", flush=True)    
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        emptyTerminal()
-        counter -= 1
+    print("SINGING IN NO ANIMATION FOR NOW")
+    # counter = 2
+    # emptyTerminal()
+    # while counter > 0:
+    #     print("Signing in", end= "", flush=True)    
+    #     time.sleep(0.4)
+    #     print(".", end="", flush=True)
+    #     time.sleep(0.4)
+    #     print(".", end="", flush=True)
+    #     time.sleep(0.4)
+    #     print(".", end="", flush=True)
+    #     time.sleep(0.4)
+    #     emptyTerminal()
+    #     counter -= 1
     
     # emptyTerminal()
 
@@ -75,7 +76,7 @@ def Register():
             passwordValidate(password)
             
             message = f"{name},{email},{username},{password}"
-            client.send(message.encode('utf-8'))
+            client.sendall(message.encode('utf-8'))
             response = client.recv(1024).decode('utf-8')
             if response == "ACCOUNT_CREATED":
                 print("RIGHT HERE")
@@ -127,7 +128,7 @@ def Login(LIMIT):
         username = input("Username: ")
         password = input("Password: ")
         
-        client.send(f"{username} {password}".encode('utf-8'))
+        client.sendall(f"{username} {password}".encode('utf-8'))
         response = client.recv(1024).decode('utf-8')
         
         
@@ -196,7 +197,7 @@ def priceValidate(price):
         raise ValueError("Less than 1") 
     
 def add_product():
-    client.send("ADD_PRODUCT".encode('utf-8'))
+    client.sendall("ADD_PRODUCT".encode('utf-8'))
     print(client.recv(1024).decode('utf-8'))
     while True:
         try: 
@@ -205,7 +206,7 @@ def add_product():
             priceValidate(price)
             description = input("Description: ")
 
-            client.send(f"{product_name},{price},{description}".encode('utf-8'))
+            client.sendall(f"{product_name},{price},{description}".encode('utf-8'))
             
             #list_products1()
             response = client.recv(1024).decode('utf-8')
@@ -221,9 +222,9 @@ def add_product():
 #kind of recursion, do i keep?
 def LogOut():
     # TODO remove user from online database from here too
-    client.send("LOG_OUT".encode('utf-8'))
+    client.sendall("LOG_OUT".encode('utf-8'))
     print("Logging out...")
-    client.send("LOGOUT".encode('utf-8'))
+    client.sendall("LOGOUT".encode('utf-8'))
     response = client.recv(1024).decode('utf-8') #Wait for confirmation from server
     if response == "LOGOUT_SUCCESS":
         print("You have been successfully logged out.")
@@ -232,15 +233,15 @@ def LogOut():
     handle_client() #Display menu
 
 def list_products():
-    client.send("SEND_PRODUCTS".encode('utf-8'))
+    client.sendall("SEND_PRODUCTS".encode('utf-8'))
     n = int(client.recv(1024).decode('utf-8'))
-    client.send("Received number of products".encode('utf-8'))
+    client.sendall("Received number of products".encode('utf-8'))
     
     table = PrettyTable()
     table.field_names = ["Username", "Product Name", "Price (in $)", "Description"]
     for i in range(n):
         temporary = client.recv(1024)
-        client.send("OK".encode('utf-8'))
+        client.sendall("OK".encode('utf-8'))
         temporary = pickle.loads(temporary)
         table.add_row([temporary[0], temporary[1], temporary[2], temporary[3]])
     # Print the table
@@ -274,11 +275,11 @@ def sendChat(target):
     while True:
         message = input("Enter: ")
         if message.lower() == "exit": 
-            client.send("EXIT_CHAT".encode('utf-8'))
+            client.sendall("EXIT_CHAT".encode('utf-8'))
             break
         else:
             print("You: ", message)
-            client.send(message.encode('utf-8'))
+            client.sendall(message.encode('utf-8'))
         
                 
         
@@ -298,7 +299,13 @@ def receiveChat(target):
     
 def listenForIncomingChatRequest():
     while True:
-        senderUser = client.recv(1024).decode('utf-8') #do timeout later TODO
+        while True:
+            try:
+                senderUser = client.recv(1024).decode('utf-8') #do timeout later TODO
+                break
+            except Exception as e:
+                print(type(e).__name__)
+                
         
         print("INCOMING..")
         print(senderUser + " would like to open a chat with you.")
@@ -306,7 +313,7 @@ def listenForIncomingChatRequest():
         choice = input("")
         #do input validation here
         if choice.lower() == "y":
-            client.send("REQUEST_ACCEPTED".encode('utf-8'))
+            client.sendall("REQUEST_ACCEPTED".encode('utf-8'))
             sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
             receiving_thread = threading.Thread(target=receiveChat, args=(senderUser,))
             sending_thread.start()
@@ -321,7 +328,7 @@ def listenForIncomingChatRequest():
         # if i send msg, send it to ronnie
 
 def handle_messaging():
-    client.send("MSG".encode('utf-8'))
+    client.sendall("MSG".encode('utf-8'))
     USER_UNAVAILABLE = False
     while True:
         print(">> MESSAGING")
@@ -331,7 +338,7 @@ def handle_messaging():
 
         #do input validation here later
         if option == "1":
-            client.send("INITIATE_CHAT".encode('utf-8'))
+            client.sendall("INITIATE_CHAT".encode('utf-8'))
             if msgGUI(USER_UNAVAILABLE) == -1:
                 USER_UNAVAILABLE = False
             
@@ -339,7 +346,7 @@ def handle_messaging():
             target = input("")
             if target.lower() == "exit": #Exit if user cancels
                 return
-            client.send(target.encode('utf-8')) #Send target username to server
+            client.sendall(target.encode('utf-8')) #Send target username to server
             response = client.recv(1024).decode('utf-8')
             
             if response == "NOT_ONLINE":
@@ -357,17 +364,19 @@ def handle_messaging():
                 sending_thread.start()
                 receiving_thread.start()
         elif option == "2":
-            client.send("LISTEN_FOR_CHAT".encode('utf-8'))
+            print("ok chosen 2")
+            client.sendall("LISTEN_FOR_CHAT".encode('utf-8'))
+            print("send the signal")
             listenForIncomingChatRequest()
 
 
 def buyProducts():
-    client.send("SEND_PRODUCTS".encode('utf-8'))
+    client.sendall("SEND_PRODUCTS".encode('utf-8'))
     client.recv(1024)
     product = input("Which product would you like to buy? ")
-    client.send(product.encode('utf-8'))
+    client.sendall(product.encode('utf-8'))
     client.recv(1024)
-    client.send("Thanks".encode('utf-8'))
+    client.sendall("Thanks".encode('utf-8'))
     client.recv(1024)
     currentdate = date.today()
     currentdate = currentdate + timedelta(days = 7)
@@ -379,17 +388,17 @@ def buyProducts():
                 
             
 def viewUsersProducts():
-    client.send("VIEW_USERS_PRODUCTS".encode('utf-8'))
+    client.sendall("VIEW_USERS_PRODUCTS".encode('utf-8'))
     client.recv(1024)
     username = input("Enter the username of the user whose products you want to see.")
-    client.send(username.encode('utf-8'))
+    client.sendall(username.encode('utf-8'))
     n1 = (int) (client.recv(1024).decode('utf-8'))
     table = PrettyTable()
     table.field_names = ["Product Name", "Price (in $)", "Description"]
     for i in range(n1):
         temporary = client.recv(1024)
         temporary = pickle.loads(temporary)
-        client.send("OK".encode('utf-8'))
+        client.sendall("OK".encode('utf-8'))
         table.add_row([temporary[0], temporary[1], temporary[2]])
         
     print(table)

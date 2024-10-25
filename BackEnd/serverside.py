@@ -93,7 +93,7 @@ def authentication(connection, address, cursor, db):
                 print(password)
                 cursor.execute("INSERT INTO Users values(?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password))
                 db.commit()
-                connection.send("ACCOUNT_CREATED".encode('utf-8'))
+                connection.sendall("ACCOUNT_CREATED".encode('utf-8'))
                 
                 
                 
@@ -103,7 +103,7 @@ def authentication(connection, address, cursor, db):
                 return username
             except sqlite3.IntegrityError:
                 print("Account already exists. Duplicate detected.")
-                connection.send("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
+                connection.sendall("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
                 return -1
         
 
@@ -120,7 +120,7 @@ def sendProducts(connection, db):
     
     cursor.execute("SELECT * FROM Products")
     productsByUser = cursor.fetchall()
-    connection.send(str(len(productsByUser)).encode('utf-8'))
+    connection.sendall(str(len(productsByUser)).encode('utf-8'))
     response = connection.recv(1024).decode('utf-8')
     print(response)
     for i in range(len(productsByUser)):
@@ -131,20 +131,20 @@ def sendProducts(connection, db):
     # file1.close()
     # file2 = open("ServerFiles/toBePrinted", 'rb')
     # for lines in file2:
-    #     connection.send(lines)
+    #     connection.sendall(lines)
 
 #"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 def sendUsersProducts(connection, db):
     cursor = db.cursor()
-    connection.send("Function of sending users products now open".encode('utf-8'))
+    connection.sendall("Function of sending users products now open".encode('utf-8'))
     username = connection.recv(1024).decode('utf-8')
     cursor.execute("SELECT product_name, price, desc FROM Products WHERE username = ?", (username,))
     usersProducts = cursor.fetchall()
-    connection.send(str(len(usersProducts)).encode('utf-8'))
+    connection.sendall(str(len(usersProducts)).encode('utf-8'))
     
     for i in range(len(usersProducts)):
-        connection.send(pickle.dumps(usersProducts[i]))
+        connection.sendall(pickle.dumps(usersProducts[i]))
         connection.recv(1024)
     
 def sendOnlineUsers(connection, cursor):
@@ -154,40 +154,41 @@ def sendOnlineUsers(connection, cursor):
     connection.sendall(pickle.dumps(onlineUsers))
     print("LOLLL")
     # for i in range(len(onlineUsers)):
-    #     connection.send(pickle.dumps(onlineUsers[i]))
-    #connection.send("<END>".encode('uf-8'))
+    #     connection.sendall(pickle.dumps(onlineUsers[i]))
+    #connection.sendall("<END>".encode('uf-8'))
 
 def buyProducts(connection, cursor):
-    connection.send("".encode('utf-8'))
+    connection.sendall("".encode('utf-8'))
     product = connection.recv(1024).decode('utf-8')
-    connection.send("Product name received".encode('utf-8'))
+    connection.sendall("Product name received".encode('utf-8'))
     cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
     connection.recv(1024)
-    connection.send("toni".encode('utf-8'))
+    connection.sendall("toni".encode('utf-8'))
     #iza badak make a random number generator
     #to decide how much time till u get the item
     
     
 OnlineUserConnections = {}
 threadLocks = {}
+threadEvents = {}
 
 #make it a queue 
-def sendChatSENDER(username, connection):
+def sendChatSENDER(username,target, connection):
     #targetUser, targetIP, targetPort, in_chat = targetDetails
-    targetConnection = OnlineUserConnections[username]
+    targetConnection = OnlineUserConnections[target]
     while True:
         messageToSend = connection.recv(1024).decode('utf-8')
         if messageToSend.lower() == "exit": 
-            connection.send("EXIT_CHAT".encode('utf-8'))
+            connection.sendall("EXIT_CHAT".encode('utf-8'))
             break
-        targetConnection.send(messageToSend)
+        targetConnection.sendall(messageToSend)
         print(messageToSend)
-        
+    threadEvents[target].set(True)
 # def receiveChatRECEIVER(connection):
 #     while True:
 #         global SenderToReceiver
 #         sendMsg = SenderToReceiver.get()
-#         connection.send(sendMsg.encode('utf-8'))
+#         connection.sendall(sendMsg.encode('utf-8'))
         
 # 
 
@@ -201,29 +202,33 @@ def handle_messaging(username, connection, db):
         option = connection.recv(1024).decode('utf-8')
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
 
+            print("GOT TARGET")
             target = connection.recv(1024).decode('utf-8')
             #cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
             #targetDetails = cursor.fetchall()
             if target in OnlineUserConnections:
-                connection.send("FOUND".encode('utf-8'))
+                print("OK FOUND")
+                connection.sendall("FOUND".encode('utf-8'))
                 
                 targetConnection = OnlineUserConnections[target]
                 #Make them online 
+                print("SAVING USER IN ONLINE AVAILABLE")
                 if username not in OnlineUserConnections:
                     OnlineUserConnections[username] = connection
                 
-                targetTHREADLOCK = threadLocks[target]
-                targetTHREADLOCK.acquire()
+                # targetTHREADLOCK = threadLocks[target]
+                # targetTHREADLOCK.acquire()
                 #send a msg request to user
-                targetConnection.send(username.encode('utf-8'))
+                print("MY NAME IS: " + username)
+                targetConnection.sendall(username.encode('utf-8'))
                 response = targetConnection.recv(1024).decode('utf-8')
                 if response == "REQUEST_ACCEPTED":
                     print("opened chat for receiver")
-                    sendChatSENDER(username, connection)
+                    sendChatSENDER(username,target, connection)
                 
-                targetTHREADLOCK.release()
+                # targetTHREADLOCK.release()
             else:
-                connection.send("NOT_ONLINE".encode('utf-8'))
+                connection.sendall("NOT_ONLINE".encode('utf-8'))
 
             #add later a check that the user is still available at this point
             
@@ -236,27 +241,29 @@ def handle_messaging(username, connection, db):
         elif option == "LISTEN_FOR_CHAT":
             if username not in OnlineUserConnections:
                 OnlineUserConnections[username] = connection
+            threadEvents[username].wait()
+            threadEvents[username].clear()
             print("WOOP WOOP")
-            targetTHREADLOCK[username].acquire()
-            targetTHREADLOCK[username].release()
-            #connection.send("OPEN")
+            # targetTHREADLOCK[username].acquire()
+            # targetTHREADLOCK[username].release()
+            #connection.sendall("OPEN")
             # sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
             # receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
             # sending_thread.start()
             # receiving_thread.start()
             
     except:
-        connection.send("NOT_ONLINE".encode('utf-8'))
+        connection.sendall("NOT_ONLINE".encode('utf-8'))
         
 def logOutUser(connection, username, cursor, db):
      removeOnline(username, db)
-     connection.send("LOGOUT_SUCCESS".encode('utf-8'))
+     connection.sendall("LOGOUT_SUCCESS".encode('utf-8'))
     
         
             
 #Handle add product
 def add_product(connection, username,cursor,  db):
-    connection.send("Opened add products now.".encode('utf-8'))
+    connection.sendall("Opened add products now.".encode('utf-8'))
     try:
         product_name, price, description = connection.recv(1024).decode('utf-8').split(",")
         print (product_name)
@@ -267,11 +274,11 @@ def add_product(connection, username,cursor,  db):
         db.commit()
 
         #sendProducts(connection, db)
-        connection.send("PRODUCT_ADDED".encode('utf-8'))
+        connection.sendall("PRODUCT_ADDED".encode('utf-8'))
 
 
     except Exception as e:
-        connection.send("ERROR: Cannot ADD product".encode('utf-8'))
+        connection.sendall("ERROR: Cannot ADD product".encode('utf-8'))
 
 def handle_client(connection, address):
     
@@ -285,7 +292,8 @@ def handle_client(connection, address):
         connection.close()
         return
     
-    threadLocks[myUsername] = threading.Lock()
+    #threadLocks[myUsername] = threading.Lock()
+    threadEvents[myUsername] = threading.Event()
     
     
     while True:
