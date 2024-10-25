@@ -216,7 +216,10 @@ def handle_messaging(username, connection, db):
                 targetTHREADLOCK.acquire()
                 #send a msg request to user
                 targetConnection.send(username.encode('utf-8'))
-                sendChatSENDER(username, connection)
+                response = targetConnection.recv(1024).decode('utf-8')
+                if response == "REQUEST_ACCEPTED":
+                    print("opened chat for receiver")
+                    sendChatSENDER(username, connection)
                 
                 targetTHREADLOCK.release()
             else:
@@ -233,6 +236,9 @@ def handle_messaging(username, connection, db):
         elif option == "LISTEN_FOR_CHAT":
             if username not in OnlineUserConnections:
                 OnlineUserConnections[username] = connection
+            print("WOOP WOOP")
+            targetTHREADLOCK[username].acquire()
+            targetTHREADLOCK[username].release()
             #connection.send("OPEN")
             # sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
             # receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
@@ -283,8 +289,9 @@ def handle_client(connection, address):
     
     
     while True:
-        threadLocks[myUsername].acquire()
-        threadLocks[myUsername].release()
+        # threadLocks[myUsername].acquire()
+        # threadLocks[myUsername].release()
+        print("SOMEHOW WE BACK HERE")
         option = connection.recv(1024).decode('utf-8')
         username = myUsername
         

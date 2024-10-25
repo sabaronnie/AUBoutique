@@ -270,6 +270,7 @@ def msgGUI(USER_UNAVAILABLE):
 def sendChat(target):
     print(">>> ", target.upper())
     print("Chat opened. Type 'exit' to close the chat.")
+    print("sendCHATTT")
     while True:
         message = input("Enter: ")
         if message.lower() == "exit": 
@@ -285,6 +286,7 @@ def sendChat(target):
     print("")
     
 def receiveChat(target):
+    print("receiveCHATTT")
     while True:
         response = client.recv(1024).decode('utf-8')
         if response == "EXIT_CHAT":
@@ -304,6 +306,7 @@ def listenForIncomingChatRequest():
         choice = input("")
         #do input validation here
         if choice.lower() == "y":
+            client.send("REQUEST_ACCEPTED".encode('utf-8'))
             sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
             receiving_thread = threading.Thread(target=receiveChat, args=(senderUser,))
             sending_thread.start()
