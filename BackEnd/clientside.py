@@ -44,11 +44,10 @@ def Sign_In_Animation():
     # emptyTerminal()
 
 def emptyTerminal():
-    print("")
-    # if os.name == 'nt':  # For Windows
-    #     os.system('cls')
-    # else:  # For Linux and macOS
-    #     os.system('clear')
+    if os.name == 'nt':  # For Windows
+        os.system('cls')
+    else:  # For Linux and macOS
+        os.system('clear')
 
 def passwordValidate(password):
     character_MinLength = 8
@@ -210,6 +209,7 @@ def add_product():
             price = input("Price: ")
             priceValidate(price)
             description = input("Description: ")
+            #filename = input("Enter the path of the picture you want to send.")
 
             client.sendall(f"{product_name},{price},{description}".encode('utf-8'))
             
@@ -272,7 +272,7 @@ def msgGUI(USER_UNAVAILABLE):
         print("The user you previously selected is no longer available")
         return -1
     return 0
-    
+
 def sendChat(target):
     print(">>> ", target.upper())
     print("Chat opened. Type 'exit' to close the chat.")
@@ -304,9 +304,9 @@ def receiveChat(target):
     
 def listenForIncomingChatRequest():
     while True:
+        print("")
         senderUser = client.recv(5000).decode('utf-8', errors='replace') #do timeout later TODO
-                
-        
+        emptyTerminal()
         print("INCOMING..")
         print(senderUser + " would like to open a chat with you.")
         print("Would you like to accept? Y/N")
@@ -318,15 +318,9 @@ def listenForIncomingChatRequest():
             #sending_thread.start()
             receiving_thread.start()
             sendChat(senderUser)
-            # sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
 
-            
-        #get signal from server that ronnie wants to open chat
-        #get ronnies name
-        
-        #now open the chat
-        #if ronnie sends msg, see it
-        # if i send msg, send it to ronnie
+
+
 
 def handle_messaging():
     client.sendall("MSG".encode('utf-8'))
@@ -353,18 +347,9 @@ def handle_messaging():
             if response == "NOT_ONLINE":
                 print("The selected user is not currently online. Please choose another user.")
             elif response =="FOUND":
-                # response = client.recv(1024).decode('utf-8')
-                #if the user went unavailable since u last printed the table
-                # if response == "USER_UNAVAILABLE":
-                #     USER_UNAVAILABLE = True
-                #     continue
-                
-                #Send a chat request
-                # sending_thread = threading.Thread(target=sendChat, args=(target,))
                 response = client.recv(1024).decode('utf-8')
                 if response == "REQUEST_ACCEPTED":
                     receiving_thread = threading.Thread(target=receiveChat, args=(target,))
-                    # sending_thread.start()
                     receiving_thread.start()
                     sendChat(target)
         elif option == "2":
@@ -372,7 +357,7 @@ def handle_messaging():
             client.sendall("LISTEN_FOR_CHAT".encode('utf-8'))
             print("send the signal")
             listenForIncomingChatRequest()
-
+                
 
 def buyProducts():
     client.sendall("SEND_PRODUCTS".encode('utf-8'))

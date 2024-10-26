@@ -24,11 +24,11 @@ cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, u
 
 # ONLINE LIST OF USERS
 # contains IP and Port
-cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, in_chat TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
+#cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, in_chat TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 # PRODUCT LIST
 #ADD IMAGES
-cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, price INT, desc TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
+cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, price INT, desc TEXT, picture BLOB NOT NULL, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
 
 def setOnline(username, ip, port, cursor, db):
@@ -47,7 +47,41 @@ def removeOnline(username, db):
     cursor = db.cursor()
     cursor.execute("DELETE FROM Online WHERE username=?", (username))
     db.commit()
+#gna run
+# deal
+with open(image_path, 'rb') as f:
+        data = f.read(4096)
+        while data:
+            client_socket.send(data)
+            data = f.read(4096)
+
+with open('received_image.jpg', 'wb') as f:
+        while True:
+            data = conn.recv(4096)
+            if not data:
+                break
+            f.write(data)
+def receiveImageFile(connection):
+    file1 = open("Image", "wb")
+    while True:
+        line = connection.recv(1024)
+        file1.append(line)
+
+
+def sendImageFile(filename):
+    while True:
+        file1 = open(filename, "rb")
+        for line in file1:
+            client.sendall(line)
+        
+
+
+#def insertImage(connection):
+  #  print("")
     
+
+    # print("")
+
 def authentication(connection, address, cursor, db):
     #Get username and password
     while True:
@@ -167,93 +201,77 @@ def buyProducts(connection, cursor):
     #iza badak make a random number generator
     #to decide how much time till u get the item
     
-    
+
 OnlineUserConnections = {}
-threadLocks = {}
-threadEvents = {}
+incomingQueues = {}
 
 #make it a queue 
-def sendChatSENDER(username,target, connection):
-    #targetUser, targetIP, targetPort, in_chat = targetDetails
-    try:
-        targetConnection = OnlineUserConnections[target]
+def sendChat(username,target, connection):
+    while True:
+        messageToSend = incomingQueues[username].get()
+        if messageToSend.lower() == "exit": 
+            connection.sendall("EXIT_CHAT".encode('utf-8'))
+            break
+        connection.sendall(messageToSend.encode('utf-8'))
+        print(messageToSend)
 
-        targetConnection.sendall(username.encode('utf-8'))
-        response = targetConnection.recv(1024).decode('utf-8')
-        connection.send(response.encode('utf-8'))
-        if response == "REQUEST_ACCEPTED":
-            while True:
-                messageToSend = connection.recv(1024).decode('utf-8')
-                if messageToSend.lower() == "exit": 
-                    connection.sendall("EXIT_CHAT".encode('utf-8'))
-                    break
-                targetConnection.sendall(messageToSend.encode('utf-8'))
-                print(messageToSend)
-        threadEvents[target].set(True)
-    except Exception as e:
-        print(type(e).__name__)
-        print("THE ERROR IS IN SEND CHAT SENDER")
-# def receiveChatRECEIVER(connection):
-#     while True:
-#         global SenderToReceiver
-#         sendMsg = SenderToReceiver.get()
-#         connection.sendall(sendMsg.encode('utf-8'))
+def receiveChat(username,target, connection):
+    while True:
+        messageToSend = connection.recv(1024).decode('utf-8')
+        incomingQueues[target].put(messageToSend)
         
-# 
 
- 
-    
-    
 def handle_messaging(username, connection, db):
     cursor = db.cursor()
     try:
         option = connection.recv(1024).decode('utf-8')
+        targetUsername = ""
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
-            sendOnlineUsers(connection, cursor)
-            print("GOT TARGET")
+            sendOnlineUsers(connection, cursor)            
             target = connection.recv(1024).decode('utf-8')
-            #cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
-            #targetDetails = cursor.fetchall()
             if target in OnlineUserConnections:
-                print("OK FOUND")
                 connection.sendall("FOUND".encode('utf-8'))
-                
-                targetConnection = OnlineUserConnections[target]
+            
                 #Make them online 
-                print("SAVING USER IN ONLINE AVAILABLE")
                 if username not in OnlineUserConnections:
                     OnlineUserConnections[username] = connection
                 
-                # targetTHREADLOCK = threadLocks[target]
-                # targetTHREADLOCK.acquire()
-                #send a msg request to user
-                print("MY NAME IS: " + username)
-                print("opened chat for receiver")
-                sendChatSENDER(username,target, connection)
-                
-                # targetTHREADLOCK.release()
+                #TRIGGER CHAT REQUEST
+                incomingQueues[target].put(username)
+                response = incomingQueues[username].get()
+                connection.send(response.encode('utf-8'))
+
+                if response == "REQUEST_ACCEPTED":
+                    sending_thread = threading.Thread(target=sendChat, args=(username, target, connection,))
+                    receiving_thread = threading.Thread(target=receiveChat, args=(username, target, connection,))
+                    sending_thread.start()
+                    receiving_thread.start()
+                    
+                    sending_thread.join()
+                    receiving_thread.join()
             else:
                 connection.sendall("NOT_ONLINE".encode('utf-8'))
 
-            #add later a check that the user is still available at this point
+
         elif option == "LISTEN_FOR_CHAT":
             if username not in OnlineUserConnections:
                 OnlineUserConnections[username] = connection
-            threadEvents[username].wait()
-            threadEvents[username].clear()
-            print("WOOP WOOP")
-            # targetTHREADLOCK[username].acquire()
-            # targetTHREADLOCK[username].release()
-            #connection.sendall("OPEN")
-            # sending_thread = threading.Thread(target=sendChatRECEIVER, args=(connection,))
-            # receiving_thread = threading.Thread(target=receiveChatRECEIVER, args=(connection,))
-            # sending_thread.start()
-            # receiving_thread.start()
+            senderUsername = incomingQueues[username].get()
+            connection.sendall(senderUsername.encode('utf-8'))
+            response = connection.recv(1024).decode('utf-8')
+            incomingQueues[senderUsername].put(response)
+            if response == "REQUEST_ACCEPTED":
+                sending_thread = threading.Thread(target=sendChat, args=(username, senderUsername, connection,))
+                receiving_thread = threading.Thread(target=receiveChat, args=(username, senderUsername, connection,))
+                sending_thread.start()
+                receiving_thread.start()
+                    
+                sending_thread.join()
+                receiving_thread.join()
             
     except Exception as e:
-        print(type(e).__name__)
-        print("BRO LEH FETIT ERROR YA ZABREEEEEEEEEEEEEEE")
         connection.sendall("NOT_ONLINE".encode('utf-8'))
+        
         
 def logOutUser(connection, username, cursor, db):
      removeOnline(username, db)
@@ -292,8 +310,7 @@ def handle_client(connection, address):
         connection.close()
         return
     
-    #threadLocks[myUsername] = threading.Lock()
-    threadEvents[myUsername] = threading.Event()
+    incomingQueues[myUsername]= Queue()
     
     
     while True:
