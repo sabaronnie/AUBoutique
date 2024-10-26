@@ -7,8 +7,6 @@ import pickle
 from datetime import date, timedelta
 #yalla btjarib l 2 clients?
 
-
-
 sys.path.append("modules") 
 
 from prettytable import PrettyTable
@@ -58,6 +56,13 @@ def passwordValidate(password):
         print('Password meets the requirements.')
 
     else: raise ValueError("Your password has to be ATLEAST 8 characters and LESS than 64 characters.")
+def sendImageFile(filename):
+    while True:
+        file1 = open(filename, "rb")
+        for line in file1:
+            client.sendall(line)
+        client.sendall(b"END")
+    
     
 def Register():
     firstTime = True
@@ -159,14 +164,16 @@ def Login(LIMIT):
 def printFirstMenu():
     while True:
         try:
-            emptyTerminal()
+            #emptyTerminal()
             print("Select action (Pick Number): ")
             print("1. LOGIN")
             print("2. REGISTER")
             print("3. EXIT")
             #input validation in gui later
-            return int(input(""))
-        except:
+            n = int(input(""))
+            return n
+        except Exception as e:
+            print(type(e).__name__)
             print("Please only submit a number. ")
             
 # TODO: do exit type, -1 to extit, or ask to ask after u enter
@@ -187,8 +194,7 @@ def authentication():
         elif choice == 2:
             if Register() == "ACCOUNT_CREATED":
                 #exit authentication. now you're logged in, mabrouk
-                return 0
-                
+                return 0 
         elif choice == 3:
             return -1
 
@@ -221,7 +227,7 @@ def add_product():
             break
         except ValueError:
             print("ERROR: Please only enter a value greather than or equal to 1$.")
-        
+    return product_name  
     
     
 #kind of recursion, do i keep?
@@ -229,13 +235,13 @@ def LogOut():
     # TODO remove user from online database from here too
     client.sendall("LOG_OUT".encode('utf-8'))
     print("Logging out...")
-    client.sendall("LOGOUT".encode('utf-8'))
+   # client.sendall("LOGOUT".encode('utf-8'))
     response = client.recv(1024).decode('utf-8') #Wait for confirmation from server
     if response == "LOGOUT_SUCCESS":
         print("You have been successfully logged out.")
     else:
         print("Error logging out, please try again.")
-    handle_client() #Display menu
+    handle_client()
 
 def list_products():
     client.sendall("SEND_PRODUCTS".encode('utf-8'))
@@ -299,13 +305,13 @@ def receiveChat(target):
             print("User has left the chat.")
             break
         print(target + ": " + response)
-    
+
     
     
 def listenForIncomingChatRequest():
     while True:
         print("")
-        senderUser = client.recv(5000).decode('utf-8', errors='replace') #do timeout later TODO
+        senderUser = client.recv(1024).decode('utf-8', errors='replace') #do timeout later TODO
         emptyTerminal()
         print("INCOMING..")
         print(senderUser + " would like to open a chat with you.")
@@ -360,26 +366,21 @@ def handle_messaging():
                 
 
 def buyProducts():
-    client.sendall("SEND_PRODUCTS".encode('utf-8'))
+    client.send("BUY_PRODUCTS".encode('utf-8'))
     client.recv(1024)
     product = input("Which product would you like to buy? ")
     client.sendall(product.encode('utf-8'))
-    client.recv(1024)
+    print(client.recv(1024).decode('utf-8'))
     client.sendall("Thanks".encode('utf-8'))
-    client.recv(1024)
-    currentdate = date.today()
-    currentdate = currentdate + timedelta(days = 7)
-    #add a check incase product is invalid or unavailable
-    #so only print this if server sends you the product name back
-    message = "Your " +  product +  " will be available at the AUB Post Office from " + str(currentdate)
-    message += "\nAUB Post Office Working Hours: 8:00 a.m. till 4:00 p.m." 
-    print(message)
+    #print(client.recv(1024).decode('utf-8'))
+    
+    return product
                 
             
 def viewUsersProducts():
     client.sendall("VIEW_USERS_PRODUCTS".encode('utf-8'))
     client.recv(1024)
-    username = input("Enter the username of the user whose products you want to see.")
+    username = input("Enter the username of the user whose products you want to see: ")
     client.sendall(username.encode('utf-8'))
     n1 = (int) (client.recv(1024).decode('utf-8'))
     table = PrettyTable()
@@ -389,45 +390,70 @@ def viewUsersProducts():
         temporary = pickle.loads(temporary)
         client.sendall("OK".encode('utf-8'))
         table.add_row([temporary[0], temporary[1], temporary[2]])
-        
+    emptyTerminal()
+    print(f"Viewing {username}'s products: ")   
     print(table)
 
      
     
 def handle_client():
-    
-    if authentication() == -1:
-        client.close()
-    else:
-        Sign_In_Animation()
-        #Now get list of products
-        #Display list of options to client 
-        f = open("BackEnd/temp.txt")
-        lol = f.read()
-        print(lol)
-        
-        while True:
-            emptyTerminal()
-            print("listproducts bro")
-            list_products()
-            print("<<")
-            print("1. Add a Product")
-            print("2. View Someone's Products")
-            print("3. Send Message")
-            print("4. Buy a Product")
-            print("5. Log Out")
-            
-            choice = input("Enter you choice: ")
-            
-            if choice == '1':
-                add_product()
-            elif choice == '2':
-                viewUsersProducts()
-            elif choice == '3':
-                handle_messaging()
-            elif choice == '4':
-                buyProducts()
-            elif choice == '5':
-                LogOut()
+    #notLoggedOut = True
+    while True:
+        if authentication() == -1:
+            print("broski")
+            break
+        else:
+            Sign_In_Animation()
+            #Now get list of products
+            #Display list of options to client 
+            f = open("BackEnd/temp.txt")
+            lol = f.read()
+            print(lol)
+            boughtProduct = False
+            addedProduct = False
+            viewAllUsers = False
+            product = ""
+            while True:
+                if viewAllUsers == False:
+                    #emptyTerminal()
+                    list_products()
+                viewAllUsers = False
+                if addedProduct:
+                    print(f"{product} successfully added")
+                    addedProduct=False
+                if boughtProduct:
+                    currentdate = date.today()
+                    currentdate = currentdate + timedelta(days = 7)
+                    message = "Your " +  product +  " will be available at the AUB Post Office from " + str(currentdate)
+                    message += "\nAUB Post Office Working Hours: 8:00 a.m. till 4:00 p.m." 
+                    print(message)
+                    boughtProduct=False
+                
+                print("<<")
+                print("1. Add a Product")
+                print("2. View Someone's Products")
+                print("3. Send Message")
+                print("4. Buy a Product")
+                print("5. Log Out")
+                
+                choice = input("Enter you choice: ")
+                
+                if choice == '1':
+                    product = add_product()
+                    addedProduct = True
+                elif choice == '2':
+                    viewUsersProducts()
+                    viewAllUsers = True
+                elif choice == '3':
+                    handle_messaging()
+                    
+                elif choice == '4':
+                    product = buyProducts()
+                    boughtProduct = True
+                elif choice == '5':
+                    LogOut()
+                    break
+        break
+    client.close()          
         
 handle_client()

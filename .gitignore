@@ -5,3 +5,5 @@ venv/
 .EECE351_project_Fall2024.pdf
 RonnieTesting/
 IMAGES/
+.messagingCLIENT.py
+.messagingServer.py

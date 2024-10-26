@@ -31,57 +31,33 @@ cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, u
 cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, price INT, desc TEXT, picture BLOB NOT NULL, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
 
-def setOnline(username, ip, port, cursor, db):
-    cursor.execute("INSERT INTO Online values(?, ?, ?, ?)", (username, ip, port, "false"))
-    db.commit()
+# def setOnline(username, ip, port, cursor, db):
+#     cursor.execute("INSERT INTO Online values(?, ?, ?, ?)", (username, ip, port, "false"))
+#     db.commit()
     
-def enableChat(username, db):
-    cursor = db.cursor()
-    cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
+# def enableChat(username, db):
+#     cursor = db.cursor()
+#     cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
     
-def disableChat(username, db):
-    cursor = db.cursor()
-    cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
+# def disableChat(username, db):
+#     cursor = db.cursor()
+#     cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
 # TODO: When you terminate client, or decide to log out, use this
-def removeOnline(username, db):
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM Online WHERE username=?", (username))
-    db.commit()
+
 #gna run
 # deal
-with open(image_path, 'rb') as f:
-        data = f.read(4096)
-        while data:
-            client_socket.send(data)
-            data = f.read(4096)
 
-with open('received_image.jpg', 'wb') as f:
-        while True:
-            data = conn.recv(4096)
-            if not data:
-                break
-            f.write(data)
 def receiveImageFile(connection):
-    file1 = open("Image", "wb")
+    f = open("Image", "wb")
+    fileData = b""
     while True:
-        line = connection.recv(1024)
-        file1.append(line)
+        if fileData[-5:] == b"<END>":
+            break
+        data = connection.recv(1024)
+        fileData+=data
+    f.write(fileData[:-5])
 
-
-def sendImageFile(filename):
-    while True:
-        file1 = open(filename, "rb")
-        for line in file1:
-            client.sendall(line)
-        
-
-
-#def insertImage(connection):
-  #  print("")
     
-
-    # print("")
-
 def authentication(connection, address, cursor, db):
     #Get username and password
     while True:
@@ -103,17 +79,20 @@ def authentication(connection, address, cursor, db):
                     connection.sendall("CORRECT".encode('utf-8'))
                     clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
                     # Set signed in user as online
-                    setOnline(username, clientIP, clientPort, cursor, db)
+                    # setOnline(username, clientIP, clientPort, cursor, db)
                     return username
                 else: #Invalid Password
                     connection.sendall("INVALID_PASSWORD".encode('utf-8'))                        
                     counter+=1
-            except:
+            except sqlite3.IntegrityError:
                 #if no such account even exists, also say invalid username or password
                 # badkon naamela t2oul no suck account exists mnel ekher?
                 print("No user with that username exists")
                 connection.sendall("INVALID_INFO".encode('utf-8'))
                 return -1
+            except Exception as e:
+                print(type(e).__name__)
+                print("m")
                     
                     
         elif option =="REGISTER":
@@ -132,7 +111,7 @@ def authentication(connection, address, cursor, db):
                 
                 
                 clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
-                setOnline(username, clientIP, clientPort, cursor, db)
+                # setOnline(username, clientIP, clientPort, cursor, db)
                 
                 return username
             except sqlite3.IntegrityError:
@@ -192,12 +171,13 @@ def sendOnlineUsers(connection, cursor):
     #connection.sendall("<END>".encode('uf-8'))
 
 def buyProducts(connection, cursor):
-    connection.sendall("".encode('utf-8'))
+    print("SHaA")
+    connection.send("23".encode('utf-8'))
     product = connection.recv(1024).decode('utf-8')
-    connection.sendall("Product name received".encode('utf-8'))
-    cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
+    connection.send("Product name received".encode('utf-8'))
     connection.recv(1024)
-    connection.sendall("toni".encode('utf-8'))
+    cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
+    #connection.sendall("toni".encode('utf-8'))
     #iza badak make a random number generator
     #to decide how much time till u get the item
     
@@ -213,22 +193,24 @@ def sendChat(username,target, connection):
             connection.sendall("EXIT_CHAT".encode('utf-8'))
             break
         connection.sendall(messageToSend.encode('utf-8'))
-        print(messageToSend)
+        
 
 def receiveChat(username,target, connection):
     while True:
         messageToSend = connection.recv(1024).decode('utf-8')
         incomingQueues[target].put(messageToSend)
-        
+        if messageToSend == "EXIT_CHAT":
+            break
+    
 
 def handle_messaging(username, connection, db):
     cursor = db.cursor()
     try:
         option = connection.recv(1024).decode('utf-8')
-        targetUsername = ""
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
             sendOnlineUsers(connection, cursor)            
             target = connection.recv(1024).decode('utf-8')
+            
             if target in OnlineUserConnections:
                 connection.sendall("FOUND".encode('utf-8'))
             
@@ -260,6 +242,7 @@ def handle_messaging(username, connection, db):
             connection.sendall(senderUsername.encode('utf-8'))
             response = connection.recv(1024).decode('utf-8')
             incomingQueues[senderUsername].put(response)
+            
             if response == "REQUEST_ACCEPTED":
                 sending_thread = threading.Thread(target=sendChat, args=(username, senderUsername, connection,))
                 receiving_thread = threading.Thread(target=receiveChat, args=(username, senderUsername, connection,))
@@ -274,7 +257,7 @@ def handle_messaging(username, connection, db):
         
         
 def logOutUser(connection, username, cursor, db):
-     removeOnline(username, db)
+     del OnlineUserConnections[username]
      connection.sendall("LOGOUT_SUCCESS".encode('utf-8'))
     
         
@@ -305,35 +288,39 @@ def handle_client(connection, address):
     #why did we use this here, and why was it mandatory
 
     #Acts like assert, doesnt prcoeed until we exit from authentication
-    myUsername = authentication(connection, address, cursor, db) 
-    if myUsername == -1:
-        connection.close()
-        return
-    
-    incomingQueues[myUsername]= Queue()
-    
-    
-    while True:
-        # threadLocks[myUsername].acquire()
-        # threadLocks[myUsername].release()
-        #TODO for some reason aweatwhen i close the clients, it spams this print
-        print("SOMEHOW WE BACK HERE")
-        option = connection.recv(1024).decode('utf-8')
-        username = myUsername
+    while True: 
+        myUsername = authentication(connection, address, cursor, db) 
+        if myUsername == -1:
+            connection.close()
+
+            return
         
-        if option == "ADD_PRODUCT":
-            add_product(connection, username, cursor, db)
-        elif option == "SEND_PRODUCTS":
-            sendProducts(connection, db)
-        elif option ==  "VIEW_USERS_PRODUCTS":
-            sendUsersProducts(connection, db)
-        elif option =="MSG":
-            handle_messaging(myUsername, connection, db)
-        elif option =="LOG_OUT":
-            logOutUser(connection, username, cursor, db)
-        elif option == "BUY_PRODUCTS":
-            buyProducts(connection, cursor)
-        #zet l shi la be2e l options (LIST_PRODUCTS, ...)
+        OnlineUserConnections[myUsername] = connection
+        incomingQueues[myUsername]= Queue()
+        
+        
+        while True:
+            # threadLocks[myUsername].acquire()
+            # threadLocks[myUsername].release()
+            #TODO for some reason aweatwhen i close the clients, it spams this print
+            print("SOMEHOW WE BACK HERE")
+            option = connection.recv(1024).decode('utf-8')
+            username = myUsername
+            
+            if option == "ADD_PRODUCT":
+                add_product(connection, username, cursor, db)
+            elif option ==  "VIEW_USERS_PRODUCTS":
+                sendUsersProducts(connection, db)
+            elif option == "SEND_PRODUCTS":
+                sendProducts(connection, db)
+            elif option =="MSG":
+                handle_messaging(myUsername, connection, db)
+            elif option == "BUY_PRODUCTS":
+                buyProducts(connection, cursor)
+            elif option =="LOG_OUT":
+                logOutUser(connection, username, cursor, db)
+                break
+            #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
         
         

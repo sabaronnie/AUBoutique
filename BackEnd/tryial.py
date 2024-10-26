@@ -1,17 +1,11 @@
 import socket
 
-def send_image(image_path, host='localhost', port=12345):
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client_socket.connect((host, port))
+def sendImageFile(filename):
+    while True:
+        file1 = open("BackEnd/ClientStorage/" + filename, "rb")
+        for line in file1:
+            client.sendall(line)
+        client.sendall(b"END")
     
-    with open(image_path, 'rb') as f:
-        data = f.read(4096)
-        while data:
-            client_socket.send(data)
-            data = f.read(4096)
 
-    print('Image sent successfully.')
-    client_socket.close()
 
-if __name__ == '__main__':
-    send_image('path_to_your_image.jpg')
