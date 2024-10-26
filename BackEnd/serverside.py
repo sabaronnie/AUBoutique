@@ -175,19 +175,24 @@ threadEvents = {}
 #make it a queue 
 def sendChatSENDER(username,target, connection):
     #targetUser, targetIP, targetPort, in_chat = targetDetails
-    targetConnection = OnlineUserConnections[target]
+    try:
+        targetConnection = OnlineUserConnections[target]
 
-    targetConnection.sendall(username.encode('utf-8'))
-    response = targetConnection.recv(1024).decode('utf-8')
-    if response == "REQUEST_ACCEPTED":
-        while True:
-            messageToSend = connection.recv(1024).decode('utf-8')
-            if messageToSend.lower() == "exit": 
-                connection.sendall("EXIT_CHAT".encode('utf-8'))
-                break
-            targetConnection.sendall(messageToSend)
-            print(messageToSend)
-    threadEvents[target].set(True)
+        targetConnection.sendall(username.encode('utf-8'))
+        response = targetConnection.recv(1024).decode('utf-8')
+        connection.send(response.encode('utf-8'))
+        if response == "REQUEST_ACCEPTED":
+            while True:
+                messageToSend = connection.recv(1024).decode('utf-8')
+                if messageToSend.lower() == "exit": 
+                    connection.sendall("EXIT_CHAT".encode('utf-8'))
+                    break
+                targetConnection.sendall(messageToSend.encode('utf-8'))
+                print(messageToSend)
+        threadEvents[target].set(True)
+    except Exception as e:
+        print(type(e).__name__)
+        print("THE ERROR IS IN SEND CHAT SENDER")
 # def receiveChatRECEIVER(connection):
 #     while True:
 #         global SenderToReceiver
@@ -201,11 +206,10 @@ def sendChatSENDER(username,target, connection):
     
 def handle_messaging(username, connection, db):
     cursor = db.cursor()
-    sendOnlineUsers(connection, cursor)
     try:
         option = connection.recv(1024).decode('utf-8')
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
-
+            sendOnlineUsers(connection, cursor)
             print("GOT TARGET")
             target = connection.recv(1024).decode('utf-8')
             #cursor.execute("SELECT username, ip_address, port, in_chat FROM Online WHERE username=?", (target,))
@@ -232,13 +236,6 @@ def handle_messaging(username, connection, db):
                 connection.sendall("NOT_ONLINE".encode('utf-8'))
 
             #add later a check that the user is still available at this point
-            
-            
-            
-                # sending_thread = threading.Thread(target=sendChatSENDER, args=(connection,))
-                # receiving_thread = threading.Thread(target=receiveChatSENDER, args=(connection,))
-                # sending_thread.start()
-                # receiving_thread.start()
         elif option == "LISTEN_FOR_CHAT":
             if username not in OnlineUserConnections:
                 OnlineUserConnections[username] = connection
@@ -253,7 +250,9 @@ def handle_messaging(username, connection, db):
             # sending_thread.start()
             # receiving_thread.start()
             
-    except:
+    except Exception as e:
+        print(type(e).__name__)
+        print("BRO LEH FETIT ERROR YA ZABREEEEEEEEEEEEEEE")
         connection.sendall("NOT_ONLINE".encode('utf-8'))
         
 def logOutUser(connection, username, cursor, db):
@@ -300,6 +299,7 @@ def handle_client(connection, address):
     while True:
         # threadLocks[myUsername].acquire()
         # threadLocks[myUsername].release()
+        #TODO for some reason aweatwhen i close the clients, it spams this print
         print("SOMEHOW WE BACK HERE")
         option = connection.recv(1024).decode('utf-8')
         username = myUsername

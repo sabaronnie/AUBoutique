@@ -55,10 +55,17 @@ def authentication():
         elif choice == 3:
             return -1
 
+seconds = 0
+def Timer (countDown):
+    seconds = countDown
+    while seconds > 0:
+        time.sleep(1)
+        seconds-=1
+        
 def Login(LIMIT):
     counter = 0
 
-    client.sendall("LOGIN".encode('utf-8'))
+    # client.sendall("LOGIN".encode('utf-8'))
     invalidPassword = False
     while True: 
         # Get username and password, send it to server, and get response depending on validity
@@ -70,18 +77,15 @@ def Login(LIMIT):
             #     return "LOGIN_BLOCKED"
             # else: counter=0 #Reset the login Block
             
-        if invalidPassword:
-            print("Invalid Password, Please try again.")
-            invalidPassword = False
-            
-        username = input("Username: ")
-        password = input("Password: ")
+        # username = input("Username: ")
+        # password = input("Password: ")
         
         #AUTO SIGN IN
-        # username = "ron"
-        # password = "12345678"
+        username = "ron"
+        password = "12345678"
         
-        client.sendall(f"{username} {password}".encode('utf-8'))
+        # client.sendall(f"{username} {password}".encode('utf-8'))
+    
         response = client.recv(1024).decode('utf-8')
         
         
@@ -101,7 +105,7 @@ def Login(LIMIT):
         if counter == LIMIT:
             print("You have failed to login way too many times!") 
             print("Please wait 3 minutes to try again.")
-            timerThread = threading.Thread(target='Timer', args=(180))
+            timerThread = threading.Thread(target=Timer, args=(180))
             timerThread.start()
 
 
@@ -185,7 +189,7 @@ def listenForIncomingChatRequest():
         # if i send msg, send it to ronnie
 
 def handle_messaging():
-    client.sendall("MSG".encode('utf-8'))
+    #client.sendall("MSG".encode('utf-8'))
     USER_UNAVAILABLE = False
     while True:
         print(">> MESSAGING")
@@ -244,16 +248,8 @@ def handle_client():
             print("5. Log Out")
             
             choice = input("Enter you choice: ")
-            
-            if choice == '1':
-                add_product()
-            elif choice == '2':
-                viewUsersProducts()
-            elif choice == '3':
+
+            if choice == '3':
                 handle_messaging()
-            elif choice == '4':
-                buyProducts()
-            elif choice == '5':
-                LogOut()
         
 handle_client()

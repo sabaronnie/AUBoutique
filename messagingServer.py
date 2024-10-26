@@ -52,10 +52,11 @@ def authentication(connection, address, cursor, db):
     #Get username and password
     while True:
         #Get LOGIN/REGISTER input
-        option = connection.recv(1024).decode('utf-8')
-        
+        #option = connection.recv(1024).decode('utf-8')
+        option = "LOGIN"
         if option == "LOGIN":
-            username, password = connection.recv(1024).decode('utf-8').split()
+            username, password = ("ron", "12345678")
+            #connection.recv(1024).decode('utf-8').split()
                 
             #Get user data from the database
             try:      
@@ -147,7 +148,7 @@ def sendChatSENDER(username,target, connection):
     
 def handle_messaging(username, connection, db):
     cursor = db.cursor()
-    sendOnlineUsers(connection, cursor)
+    #sendOnlineUsers(connection, cursor)
     try:
         option = connection.recv(1024).decode('utf-8')
         if option == "INITIATE_CHAT": #sends chat request for somekne waiting
@@ -225,9 +226,8 @@ def handle_client(connection, address):
         # threadLocks[myUsername].acquire()
         # threadLocks[myUsername].release()
         print("SOMEHOW WE BACK HERE")
-        option = connection.recv(1024).decode('utf-8')
-        
-
+        #option = connection.recv(1024).decode('utf-8')
+        option = "MSG"
         if option =="MSG":
             handle_messaging(myUsername, connection, db)
 

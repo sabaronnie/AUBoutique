@@ -314,10 +314,11 @@ def listenForIncomingChatRequest():
         #do input validation here
         if choice.lower() == "y":
             client.sendall("REQUEST_ACCEPTED".encode('utf-8'))
-            sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
             receiving_thread = threading.Thread(target=receiveChat, args=(senderUser,))
-            sending_thread.start()
+            #sending_thread.start()
             receiving_thread.start()
+            sendChat(senderUser)
+            # sending_thread = threading.Thread(target=sendChat, args=(senderUser,))
 
             
         #get signal from server that ronnie wants to open chat
@@ -359,10 +360,13 @@ def handle_messaging():
                 #     continue
                 
                 #Send a chat request
-                sending_thread = threading.Thread(target=sendChat, args=(target,))
-                receiving_thread = threading.Thread(target=receiveChat, args=(target,))
-                sending_thread.start()
-                receiving_thread.start()
+                # sending_thread = threading.Thread(target=sendChat, args=(target,))
+                response = client.recv(1024).decode('utf-8')
+                if response == "REQUEST_ACCEPTED":
+                    receiving_thread = threading.Thread(target=receiveChat, args=(target,))
+                    # sending_thread.start()
+                    receiving_thread.start()
+                    sendChat(target)
         elif option == "2":
             print("ok chosen 2")
             client.sendall("LISTEN_FOR_CHAT".encode('utf-8'))
