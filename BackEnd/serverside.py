@@ -57,42 +57,90 @@ def receiveImageFile(connection):
         fileData+=data
     f.write(fileData[:-5])
 
+
+accountTries = {}
+def resetTries(username):
+    del accountTries[username]
     
+def incrementTries(username):
+    accountTries[username]+=1
+
+LOGIN_COOLDOWN = 15
+
+STOP_TIMER_AND_RESET = False
+seconds = 0
+def Timer (username):
+    global seconds, STOP_TIMER_AND_RESET, LOGIN_COOLDOWN
+    print("STARTED TIME FOR ", username)
+    seconds = LOGIN_COOLDOWN
+    while seconds > 0:
+        if STOP_TIMER_AND_RESET:
+            STOP_TIMER_AND_RESET = False
+            break
+        time.sleep(1)
+        seconds-=1
+    resetTries(username)
+    
+        
 def authentication(connection, address, cursor, db):
+    global STOP_TIMER_AND_RESET, seconds, LOGIN_COOLDOWN
     #Get username and password
     while True:
         #Get LOGIN/REGISTER input
         option = connection.recv(1024).decode('utf-8')
         
         if option == "LOGIN":
-            username, password = connection.recv(1024).decode('utf-8').split()
+            while True:
+                username, password = connection.recv(1024).decode('utf-8').split()
                 
-            #Get user data from the database
-            try:      
-                #Already checks for username
-                cursor.execute("SELECT password FROM Users WHERE username=? ", (username.lower(),))
-                print("NOT PASSED YET")
-                targetPassword = cursor.fetchall()[0][0] #check that this is not rendered between parentheses.
-                print("PASSED HERE")
-                
-                if  password == targetPassword:
-                    connection.sendall("CORRECT".encode('utf-8'))
-                    clientIP, clientPort = connection.recv(1024).decode('utf-8').split()
-                    # Set signed in user as online
-                    # setOnline(username, clientIP, clientPort, cursor, db)
-                    return username
-                else: #Invalid Password
-                    connection.sendall("INVALID_PASSWORD".encode('utf-8'))                        
-                    counter+=1
-            except sqlite3.IntegrityError:
-                #if no such account even exists, also say invalid username or password
-                # badkon naamela t2oul no suck account exists mnel ekher?
-                print("No user with that username exists")
-                connection.sendall("INVALID_INFO".encode('utf-8'))
-                return -1
-            except Exception as e:
-                print(type(e).__name__)
-                print("m")
+                #Get user data from the database
+                try:      
+                    #Already checks for username
+                    cursor.execute("SELECT password FROM Users WHERE username=? ", (username.lower(),))
+                    targetPassword = cursor.fetchall() #check that this is not rendered between parentheses.
+                    if not targetPassword:
+                        raise sqlite3.IntegrityError
+                    else:
+                        targetPassword = targetPassword[0][0]
+                    
+                    #At this point, username is verified
+                    #If we are in timer mode, then you shouldnt be able to try to login at all
+                    if username in accountTries:
+                        if accountTries[username] == 3:
+                            #SEND ENAK HACKER YA HAYAWENNNN
+                            connection.sendall("TIMER_NOT_FINISHED".encode('utf-8'))
+                            connection.recv(1024)
+                            connection.send(str(seconds).encode('utf-8'))
+                            continue       
+                        #connection.sendall("TIMER_FINISHED".encode('utf-8'))        
+                    
+                    
+                    if  password == targetPassword:
+                        connection.sendall("CORRECT".encode('utf-8'))
+                        STOP_TIMER_AND_RESET = True
+                        return username
+                    else: #Invalid Password
+                        connection.send("INVALID_INFO".encode('utf-8'))
+                        if username not in accountTries:
+                            accountTries[username]=1
+                        else:
+                            incrementTries(username)
+                        
+                        if accountTries[username]==3:
+                            timerThread = threading.Thread(target=Timer, args=(username,))
+                            timerThread.start()
+                            
+                            connection.send("TIMER_NOTIFY".encode('utf-8'))
+                        else:
+                            connection.send("TIMER_NOT_ON".encode('utf-8'))
+                            
+                        #raise sqlite3.IntegrityError
+                except sqlite3.IntegrityError:
+                    #if no such account even exists, also say invalid username or password
+                    # badkon naamela t2oul no suck account exists mnel ekher?
+                    print("No user with that username exists")
+                    connection.sendall("INVALID_INFO".encode('utf-8'))
+
                     
                     
         elif option =="REGISTER":
@@ -117,7 +165,8 @@ def authentication(connection, address, cursor, db):
             except sqlite3.IntegrityError:
                 print("Account already exists. Duplicate detected.")
                 connection.sendall("ACCOUNT_ALREADY_EXISTS".encode('utf-8'))
-                return -1
+        elif option == "EXIT":
+            return -1
         
 
         
@@ -160,12 +209,18 @@ def sendUsersProducts(connection, db):
         connection.sendall(pickle.dumps(usersProducts[i]))
         connection.recv(1024)
     
+OnlineUserConnections = {}
+incomingQueues = {}
+
 def sendOnlineUsers(connection, cursor):
-    cursor.execute("SELECT username FROM Online WHERE in_chat=true")
-    onlineUsers = cursor.fetchall()
-    print("BEFORE LOL")
+    #cursor.execute("SELECT username FROM Online WHERE in_chat=true")
+    #onlineUsers = cursor.fetchall()
+    #print("BEFORE LOL")
+    onlineUsers= []
+    for users in OnlineUserConnections:
+        onlineUsers.append(users)
     connection.sendall(pickle.dumps(onlineUsers))
-    print("LOLLL")
+    #print("LOLLL")
     # for i in range(len(onlineUsers)):
     #     connection.sendall(pickle.dumps(onlineUsers[i]))
     #connection.sendall("<END>".encode('uf-8'))
@@ -182,8 +237,6 @@ def buyProducts(connection, cursor):
     #to decide how much time till u get the item
     
 
-OnlineUserConnections = {}
-incomingQueues = {}
 
 #make it a queue 
 def sendChat(username,target, connection):

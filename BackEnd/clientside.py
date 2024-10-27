@@ -8,14 +8,20 @@ from datetime import date, timedelta
 import curses
 #yalla btjarib l 2 clients?
 
+#TODO: password and mail validation
+#TODO: viewing ur own buyers
+#TODO: fixing errors and making sure they dont crash 
+#TODO: fixing the msging issue
+
+
 sys.path.append("modules") 
 
 from prettytable import PrettyTable
 
 #Port = 9999
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# client.connect((socket.gethostbyname(socket.gethostname()),9999))
-client.connect(("212.36.210.69",9999))
+client.connect((socket.gethostbyname(socket.gethostname()),9999))
+
 
 clientIP = client.getsockname()[0]
 clientPort = client.getsockname()[1]
@@ -53,18 +59,70 @@ def passwordValidate(password):
     character_MinLength = 8
     character_MaxLength = 64
     size = len(password)
-    if size <= character_MaxLength and size >= character_MinLength :
-        # what other condtions do i add
-        print('Password meets the requirements.')
+    specialChars = "!@#$%^&*()-_=+[];:<>?~"
+    containsLetter = any(char.isalpha() for char in password)
+    containsNumber = any(char.isdigit() for char in password) 
+    firstTime = True
+    while  True:
+        
+        if firstTime == True:
+            firstTime = False
+            if size <= character_MaxLength and size >= character_MinLength and containsLetter and containsNumber and password[0] not in specialChars:
+                # what other condtions do i add
+                print('Password meets the requirements.')
+                return password
+            elif size >= character_MaxLength and size <= character_MinLength : 
+                print("Your password has to be ATLEAST 8 characters and LESS than 64 characters.")
+            elif  not containsLetter:
+                print("Your password does not contain a letter.")
+            elif not containsNumber:
+                print("Your password does not contain a number.")
+            else:
+                print("Your password starts with a special character.")
+        newpass = input("Enter another password: ")
+        containsLetter = any(char.isalpha() for char in newpass)
+        containsNumber = any(char.isdigit() for char in newpass) 
+        size = len(newpass)
+        if size <= character_MaxLength and size >= character_MinLength and containsLetter and containsNumber and password[0] not in specialChars:
+                    # what other condtions do i add
+            print('Password meets the requirements.')
+            break
+        elif size >= character_MaxLength and size <= character_MinLength : 
+           print("Your password has to be ATLEAST 8 characters and LESS than 64 characters.")
+        elif  not containsLetter:
+             print("Your password does not contain a letter.")
+        elif not containsNumber:
+            print("Your password does not contain a number.")
+        else:
+            print("Your password starts with a special character.")
 
-    else: raise ValueError("Your password has to be ATLEAST 8 characters and LESS than 64 characters.")
+        
+    return newpass
 def sendImageFile(filename):
     while True:
         file1 = open(filename, "rb")
         for line in file1:
             client.sendall(line)
         client.sendall(b"END")
-    
+
+
+        
+def validateEmail(email):
+    firstTime = True
+    while True:
+        if firstTime == True:
+            firstTime = False
+            if email[-12:] == "mail.aub.edu":
+                return email
+            else:
+                print("Your email should be an AUB email.")
+
+        mail = input("Enter your mail again: ")
+        if mail[-12:] == "mail.aub.edu":
+                return mail
+        print("Your email should be an AUB email.")
+        
+
     
 def Register():
     firstTime = True
@@ -75,11 +133,11 @@ def Register():
                 client.sendall("REGISTER".encode('utf-8'))
             name = input("Enter your full name: ")
             email = input("Enter your email: ")
+            email = validateEmail(email)
             username = input("Enter your username: ")
-            password = input("Enter your password: ")
+            password = input("Password should be at least 8 characters.\nPassword should be alphanumeric (Contains numbers and letters and not one type only).\nPassword should not start with a special character (!@#$%^&*()-_=+[];:<>?~)\nEnter your password: ")
             firstTime = False
-            
-            passwordValidate(password)
+            password = passwordValidate(password)
             
             message = f"{name},{email},{username},{password}"
             client.sendall(message.encode('utf-8'))
@@ -117,20 +175,33 @@ def Login(LIMIT):
     counter = 0
 
     client.sendall("LOGIN".encode('utf-8'))
-    invalidPassword = False
+    invalidUserPassword = False
+    TIMER_BLOCK = False
+    TIMER_NOTIFY = False
+    seconds = 0
     while True: 
         # Get username and password, send it to server, and get response depending on validity
-        #emptyTerminal()
+        emptyTerminal()
 
-        if counter == LIMIT:
-            if seconds > 0:
-                print(f"There are {seconds} seconds left till you can attempt a login again.")
-                return "LOGIN_BLOCKED"
-            else: counter=0 #Reset the login Block
+        # if counter == LIMIT:
+        #     if seconds > 0:
+        #         print(f"There are {seconds} seconds left till you can attempt a login again.")
+        #         return "LOGIN_BLOCKED"
+        #     else: counter=0 #Reset the login Block
+        if TIMER_BLOCK:
+            print(f"There are {seconds} seconds left till you can attempt a login again.")
+            print("\n")
+            TIMER_BLOCK = False   
+        elif TIMER_NOTIFY:
+            print("You have failed to login way too many times!") 
+            print("Please wait 3 minutes to try again.")   
+            print("\n")
+            TIMER_NOTIFY = False
+        if invalidUserPassword:
+            print("Invalid Username or Password. Please try again.")
+            print("\n")
+            invalidUserPassword = False
             
-        if invalidPassword:
-            print("Invalid Password, Please try again.")
-            invalidPassword = False
             
         username = input("Username: ")
         password = input("Password: ")
@@ -141,27 +212,30 @@ def Login(LIMIT):
         # password = "12345678"
         
         client.sendall(f"{username} {password}".encode('utf-8'))
+        
+    
         response = client.recv(1024).decode('utf-8')
         
-        
+        if response == "TIMER_NOT_FINISHED":
+            TIMER_BLOCK = True
+            client.send("OK".encode('utf-8'))
+            seconds = client.recv(1024).decode('utf-8')
+            continue   
+            
         if response == "CORRECT":
             print("Success! Welcome " + username)
             # Send this client's IP and Port
-            client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
+            #client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
             return "SIGNED_IN"
-        elif response == "INVALID_PASSWORD":
-            invalidPassword = True
-            print("Invalid Password")
-            counter+=1
         elif response == "INVALID_INFO":
-            invalidPassword = True
-            print("Invalid Username or Password")
-            counter+=1
-        if counter == LIMIT:
-            print("You have failed to login way too many times!") 
-            print("Please wait 3 minutes to try again.")
-            timerThread = threading.Thread(target='Timer', args=(180))
-            timerThread.start()
+            invalidUserPassword = True
+            response = client.recv(1024).decode('utf-8')
+            if response == "TIMER_NOTIFY":
+                TIMER_NOTIFY = True
+            #return "INVALID_INFO"
+        
+
+
 
       
 def printFirstMenu():
@@ -199,6 +273,7 @@ def authentication():
                 #exit authentication. now you're logged in, mabrouk
                 return 0 
         elif choice == 3:
+            client.send("EXIT".encode('utf-8'))
             return -1
 
 #mnaamel handling functions la kel choice w mnerjaa mnaamella call bel main function tahet
@@ -244,7 +319,7 @@ def LogOut():
         print("You have been successfully logged out.")
     else:
         print("Error logging out, please try again.")
-    handle_client()
+    # handle_client()
 
 def list_products():
     client.sendall("SEND_PRODUCTS".encode('utf-8'))
@@ -266,12 +341,13 @@ def getOnlineUsers():
     onlineUsers = client.recv(1024)
     onlineUsers = pickle.loads(onlineUsers)
     for i in range(1, len(onlineUsers)+1):
-        print(i + "- " + onlineUsers[i-1])
+        print(str(i) + "- " + onlineUsers[i-1])
     
 def msgGUI(USER_UNAVAILABLE):
     print(">>")
-    print("Pick the user to message (or type 'exit' to cancel):")
     getOnlineUsers()
+    print("Pick the user to message (or type 'exit' to cancel):")
+
     
     print()
     if USER_UNAVAILABLE:
@@ -325,20 +401,83 @@ def sendChat(target):
     
     print("")
     
+# def receiveChat(target):
+#     global i
+#     stdscr = curses.initscr()
+#     while True:
+#         #y, x = stdscr.getyx()
+#         response = client.recv(1024).decode('utf-8')
+#        # stdscr.addstr(i, 0, "Enter: ")
+#         if response == "EXIT_CHAT":
+#             print("User has left the chat.")
+#             break
+#         stdscr.addstr(i, 0, f"{target}: {response}")
+#         stdscr.refresh()  
+#         lastLine = curses.LINES-1
+#           # Get current cursor coordinates
+#         # if y != lastLine:
+#         stdscr.move(lastLine, 8) 
+#         x = 8  # Read the character at position (y, x)
+#         while True:
+#             ch = stdscr.inch(lastLine, x)
+#         # Display result
+#             if ch == curses.ACS_BLOCK:
+#                 break
+#             else:
+#                 x+=1
+#                 stdscr.move(lastLine, x) 
+#         stdscr.refresh()  
+#         #print(target + ": " + response)
+#         i+=1
+#     curses.endwin()
+
 def receiveChat(target):
     global i
     stdscr = curses.initscr()
     while True:
+        #y, x = stdscr.getyx()
         response = client.recv(1024).decode('utf-8')
-        stdscr.addstr(i, 0, "Enter: ")
+       # stdscr.addstr(i, 0, "Enter: ")
         if response == "EXIT_CHAT":
             print("User has left the chat.")
             break
         stdscr.addstr(i, 0, f"{target}: {response}")
         stdscr.refresh()  
+        lastLine = curses.LINES-1
+          # Get current cursor coordinates
+        # if y != lastLine:
+        stdscr.move(lastLine, 8)   # Read the character at position (y, x)
+        stdscr.refresh()  
         #print(target + ": " + response)
         i+=1
-    curses.endwin()
+
+    # stdscr.move(lastLine, 8)  # Move to the line we want to monitor
+    # message = ""  # To store the current input
+    # while True:
+    #     char = stdscr.getch()  # Get character input
+
+    #     if char == curses.KEY_BACKSPACE or char == 127:  # Handle backspace
+    #         if message:
+    #             y, x = stdscr.getyx() 
+    #             message = message[:-1]  # Remove last character
+    #             stdscr.move(lastLine,x -1)  # Move back to the line
+    #             stdscr.clrtoeol()  # Clear the line
+    #             stdscr.addstr(lastLine, 0, message)  # Redraw the message
+    #     elif char == ord('\n'):  # Enter key to submit
+    #         break
+    #     else:
+    #         message += chr(char)  # Append new character
+    #         stdscr.addstr(lastLine, 0, message)  # Update line
+    #         stdscr.move(lastLine, len(message))  # Move cursor to end of line
+
+    #     # Display character count
+    #     count_message = f"Character count: {len(message)}"
+    #     stdscr.addstr(lastLine + 1, 0, count_message.ljust(curses.COLS))  # Update count
+    #     stdscr.refresh()
+    # curses.endwin()
+    
+    
+#TODO; if other client crashed or closed, show on both sides
 
 stopLoop = False
 def Waiting_Animation():
@@ -473,7 +612,7 @@ def handle_client():
                 if boughtProduct:
                     currentdate = date.today()
                     currentdate = currentdate + timedelta(days = 7)
-                    message = "Your " +  product +  " will be available at the AUB Post Office from " + str(currentdate)
+                    message = "!!! Your " +  product +  " will be available at the AUB Post Office from " + str(currentdate)
                     message += "\nAUB Post Office Working Hours: 8:00 a.m. till 4:00 p.m." 
                     print(message)
                     boughtProduct=False
@@ -502,7 +641,7 @@ def handle_client():
                 elif choice == '5':
                     LogOut()
                     break
-        break
+
     client.close()          
         
 handle_client()
