@@ -7,3 +7,4 @@ RonnieTesting/
 IMAGES/
 .messagingCLIENT.py
 .messagingServer.py
+.DS_Store
