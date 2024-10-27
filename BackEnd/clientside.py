@@ -5,6 +5,7 @@ import os
 import sys
 import pickle
 from datetime import date, timedelta
+import curses
 #yalla btjarib l 2 clients?
 
 sys.path.append("modules") 
@@ -13,7 +14,8 @@ from prettytable import PrettyTable
 
 #Port = 9999
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect((socket.gethostbyname(socket.gethostname()),9999))
+# client.connect((socket.gethostbyname(socket.gethostname()),9999))
+client.connect(("212.36.210.69",9999))
 
 clientIP = client.getsockname()[0]
 clientPort = client.getsockname()[1]
@@ -133,6 +135,7 @@ def Login(LIMIT):
         username = input("Username: ")
         password = input("Password: ")
         
+        #password = "12345678"
         #AUTO SIGN IN
         # username = "ron"
         # password = "12345678"
@@ -260,11 +263,8 @@ def list_products():
 
     
 def getOnlineUsers():
-    print("uh")
     onlineUsers = client.recv(1024)
-    print("bruv")
     onlineUsers = pickle.loads(onlineUsers)
-    print("WHYYYY")
     for i in range(1, len(onlineUsers)+1):
         print(i + "- " + onlineUsers[i-1])
     
@@ -279,39 +279,92 @@ def msgGUI(USER_UNAVAILABLE):
         return -1
     return 0
 
+#LOCK IT
+i = 3
 def sendChat(target):
-    print(">>> ", target.upper())
-    print("Chat opened. Type 'exit' to close the chat.")
-    print("sendCHATTT")
+    global i
+    stdscr = curses.initscr()
+    #curses.noecho()
+    #curses.cbreak()
+    stdscr.keypad(True)
+    
+    stdscr.clear()
+    
+    stdscr.addstr(0, 0, f">>> {target.upper()}")
+    stdscr.refresh()
+    stdscr.addstr(1, 0, "Chat opened. Type 'exit' to close the chat.")
+    stdscr.refresh()
+    # print(">>> ", target.upper())
+    # print("Chat opened. Type 'exit' to close the chat.")
+    
     while True:
-        message = input("Enter: ")
+        stdscr.addstr(curses.LINES - 1, 0, "Enter: ")
+        stdscr.refresh()
+        message = stdscr.getstr(curses.LINES-1, 8).decode('utf-8')
+        lastLine = curses.LINES-1
+        stdscr.move(lastLine, 0)     # Move the cursor to the beginning of line y
+        stdscr.clrtoeol()     # Clear to the end of line
+        stdscr.refresh()      # Refresh the screen to apply changes
+        # Starts reading after "Enter something: "
         if message.lower() == "exit": 
             client.sendall("EXIT_CHAT".encode('utf-8'))
             break
         else:
-            print("You: ", message)
+            stdscr.addstr(i, 0, f"You: {message}")
+            stdscr.refresh()  
+            i+=1
+            #print("You: ", message)
             client.sendall(message.encode('utf-8'))
-        
+            
+    #curses.nocbreak()
+    stdscr.keypad(False)
+    #curses.echo()
+    curses.endwin()
                 
         
     
     print("")
     
 def receiveChat(target):
-    print("receiveCHATTT")
+    global i
+    stdscr = curses.initscr()
     while True:
         response = client.recv(1024).decode('utf-8')
+        stdscr.addstr(i, 0, "Enter: ")
         if response == "EXIT_CHAT":
             print("User has left the chat.")
             break
-        print(target + ": " + response)
+        stdscr.addstr(i, 0, f"{target}: {response}")
+        stdscr.refresh()  
+        #print(target + ": " + response)
+        i+=1
+    curses.endwin()
 
+stopLoop = False
+def Waiting_Animation():
+    emptyTerminal()
+    while not stopLoop:
+        print("Waiting for chat request", end= "", flush=True)    
+        time.sleep(0.4)
+        print(".", end="", flush=True)
+        time.sleep(0.4)
+        print(".", end="", flush=True)
+        time.sleep(0.4)
+        print(".", end="", flush=True)
+        time.sleep(0.4)
+        emptyTerminal()
+    
     
     
 def listenForIncomingChatRequest():
     while True:
         print("")
+        global stopLoop
+        waiting_animation = threading.Thread(target=Waiting_Animation, args=())
+        waiting_animation.start()
         senderUser = client.recv(1024).decode('utf-8', errors='replace') #do timeout later TODO
+        stopLoop = True
+        waiting_animation.join()
         emptyTerminal()
         print("INCOMING..")
         print(senderUser + " would like to open a chat with you.")
@@ -342,8 +395,6 @@ def handle_messaging():
             client.sendall("INITIATE_CHAT".encode('utf-8'))
             if msgGUI(USER_UNAVAILABLE) == -1:
                 USER_UNAVAILABLE = False
-            
-            print("kkkkkkkk")
             target = input("")
             if target.lower() == "exit": #Exit if user cancels
                 return
@@ -359,9 +410,7 @@ def handle_messaging():
                     receiving_thread.start()
                     sendChat(target)
         elif option == "2":
-            print("ok chosen 2")
             client.sendall("LISTEN_FOR_CHAT".encode('utf-8'))
-            print("send the signal")
             listenForIncomingChatRequest()
                 
 
