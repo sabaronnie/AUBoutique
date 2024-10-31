@@ -125,45 +125,7 @@ def validateEmail(email):
         
 
     
-def Register():
-    firstTime = True
-    emptyTerminal()
-    while True:
-        try: 
-            if firstTime:
-                client.sendall("REGISTER".encode('utf-8'))
-            name = input("Enter your full name: ")
-            email = input("Enter your email: ")
-            email = validateEmail(email)
-            username = input("Enter your username: ")
-            password = input("Password should be at least 8 characters.\nPassword should be alphanumeric (Contains numbers and letters and not one type only).\nPassword should not start with a special character (!@#$%^&*()-_=+[];:<>?~)\nEnter your password: ")
-            firstTime = False
-            password = passwordValidate(password)
-            
-            message = f"{name},{email},{username},{password}"
-            client.sendall(message.encode('utf-8'))
-            response = client.recv(1024).decode('utf-8')
-            if response == "ACCOUNT_CREATED":
-                print("RIGHT HERE")
-                client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
-                return response
-            elif response == "ACCOUNT_ALREADY_EXISTS":
-                print("Account already exists. Either login or use a different email or username.")
-                return ""
-            break
-        except ValueError:
-            counter = 5
-            emptyTerminal()
-            while counter>0:
-                print("Password does not meet the necessary requirements.")
-                print("- Atleast 8 characters, Less than 64 characters")
-                print("")
-                print("You will have the chance to retry again in " + str(counter) + " seconds.")
-                time.sleep(1)
-                counter -= 1
-                emptyTerminal()
 
-            
         
 seconds = 0
 def Timer (countDown):
@@ -285,28 +247,7 @@ def priceValidate(price):
     if float(price) < MIN_PRICE:
         raise ValueError("Less than 1") 
     
-def add_product():
-    client.sendall("ADD_PRODUCT".encode('utf-8'))
-    print(client.recv(1024).decode('utf-8'))
-    while True:
-        try: 
-            product_name = input("Product name: ")
-            price = input("Price: ")
-            priceValidate(price)
-            description = input("Description: ")
-            #filename = input("Enter the path of the picture you want to send.")
 
-            client.sendall(f"{product_name},{price},{description}".encode('utf-8'))
-            
-            #list_products1()
-            response = client.recv(1024).decode('utf-8')
-            if response == "PRODUCT_ADDED":
-                print("Product was successfully added.")
-            else: print("There was an error in adding your product. Please try again.")
-            break
-        except ValueError:
-            print("ERROR: Please only enter a value greather than or equal to 1$.")
-    return product_name  
     
     
 #kind of recursion, do i keep?
@@ -322,39 +263,21 @@ def LogOut():
         print("Error logging out, please try again.")
     # handle_client()
 
-def list_products():
-    client.sendall("SEND_PRODUCTS".encode('utf-8'))
-    n = int(client.recv(1024).decode('utf-8'))
-    client.sendall("Received number of products".encode('utf-8'))
+# def list_products():
+#     client.sendall("SEND_PRODUCTS".encode('utf-8'))
+#     n = int(client.recv(1024).decode('utf-8'))
+#     client.sendall("Received number of products".encode('utf-8'))
     
-    table = PrettyTable()
-    table.field_names = ["Username", "Product Name", "Price (in $)", "Description"]
-    for i in range(n):
-        temporary = client.recv(1024)
-        client.sendall("OK".encode('utf-8'))
-        temporary = pickle.loads(temporary)
-        table.add_row([temporary[0], temporary[1], temporary[2], temporary[3]])
-    # Print the table
-    print(table)
+#     table = PrettyTable()
+#     table.field_names = ["Username", "Product Name", "Price (in $)", "Description"]
+#     for i in range(n):
+#         temporary = client.recv(1024)
+#         client.sendall("OK".encode('utf-8'))
+#         temporary = pickle.loads(temporary)
+#         table.add_row([temporary[0], temporary[1], temporary[2], temporary[3]])
+#     # Print the table
+#     print(table)
 
-    
-def getOnlineUsers():
-    onlineUsers = client.recv(1024)
-    onlineUsers = pickle.loads(onlineUsers)
-    for i in range(1, len(onlineUsers)+1):
-        print(str(i) + "- " + onlineUsers[i-1])
-    
-def msgGUI(USER_UNAVAILABLE):
-    print(">>")
-    #getOnlineUsers()
-    print("Pick the user to message (or type 'exit' to cancel):")
-
-    
-    print()
-    if USER_UNAVAILABLE:
-        print("The user you previously selected is no longer available")
-        return -1
-    return 0
 
 #LOCK IT
 i = 3
@@ -383,7 +306,7 @@ def sendChat(messages_list, size, unread_messages, username, target, db):
             stdscr.addstr(i, 0, f"{target}: {messages_list[j][1]}")
         else:
             stdscr.addstr(i, 0, f"You: {messages_list[j][1]}")
-        i+=1 #possible extra line here
+        i+=1
         stdscr.refresh()
         
     #NOW WRITE UNREAD    
@@ -396,8 +319,8 @@ def sendChat(messages_list, size, unread_messages, username, target, db):
         q = 0
         for q in range(size):
             stdscr.addstr(i, 0, f"{target}: {unread_messages[q]}")
-            i+=1   
-            cursor.execute("INSERT INTO History values(?,?,?)", (target, username, unread_messages[q]))   
+            i+=1 
+            cursor.execute("INSERT INTO History values(?,?,?)", (target, username, message))   
             db.commit()   
 
     
@@ -421,14 +344,17 @@ def sendChat(messages_list, size, unread_messages, username, target, db):
             i+=1
             #print("You: ", message)
             client.sendall(message.encode('utf-8'))
-            if target and username and message:
-                cursor.execute("INSERT INTO History values(?,?,?)", (target, username, message))   
-                db.commit()
+            cursor.execute("INSERT INTO History values(?,?,?)", (target, username, message))   
+            db.commit()
         
     #curses.nocbreak()
     stdscr.keypad(False)
     #curses.echo()
     curses.endwin()
+                
+        
+    
+    print("")
 
 
 #this runs in the background when you open the chat
@@ -448,9 +374,8 @@ def receiveChat(username, target):
         if response == "EXIT_CHAT":
             print("User has left the chat.")
             break
-        if username and target and response:
-            cursor.execute("INSERT INTO History values(?,?,?)", (username, target, response))   
-            db.commit()
+        cursor.execute("INSERT INTO History values(?,?,?)", (username, target, response))   
+        db.commit()
         stdscr.addstr(i, 0, f"{target}: {response}")
         stdscr.refresh()  
         lastLine = curses.LINES-1
@@ -463,55 +388,7 @@ def receiveChat(username, target):
 
 
     
-#TODO; if other client crashed or closed, show on both sides
 
-stopLoop = False
-def Waiting_Animation():
-    emptyTerminal()
-    while not stopLoop:
-        print("Waiting for chat request", end= "", flush=True)    
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        print(".", end="", flush=True)
-        time.sleep(0.4)
-        emptyTerminal()
-    
-    
-    
-def listenForIncomingChatRequest():
-    while True:
-        print("")
-        global stopLoop
-        waiting_animation = threading.Thread(target=Waiting_Animation, args=())
-        waiting_animation.start()
-        senderUser = client.recv(1024).decode('utf-8', errors='replace') #do timeout later TODO
-        stopLoop = True
-        waiting_animation.join()
-        emptyTerminal()
-        print("INCOMING..")
-        print(senderUser + " would like to open a chat with you.")
-        print("Would you like to accept? Y/N")
-        choice = input("")
-        #do input validation here
-        if choice.lower() == "y":
-            client.sendall("REQUEST_ACCEPTED".encode('utf-8'))
-            receiving_thread = threading.Thread(target=receiveChat, args=(senderUser,))
-            #sending_thread.start()
-            receiving_thread.start()
-            sendChat(senderUser)
-
-#threadsQueue = {}
-# IDK HOW TO IMPLEMENT YET
-def passivelyListenForChatRequest():
-    while True:
-        received = client.recv(1024).decode('utf-8')
-        status, username = received.split()
-        if status == "INCOMING_CHAT_REQUEST":
-            print(f"!!!\nYou have received some messages from {username}.\nMake sure to check them out later.")
-            
 
     # Messages
     # 1. Open a chat with someone new
@@ -571,11 +448,9 @@ def handle_messaging(username, db):
 
             print("\n\n\n")
             
-        #IF YOU EXIT AND TRY TO MSG SOMEONE AGAIN, -> error
         target = input("")
         if target =="exit": 
-            client.sendall("EXIT".encode('utf-8'))
-            break
+            continue
         
         # else:
         #     client.sendall(target.encode('utf-8'))
@@ -586,8 +461,8 @@ def handle_messaging(username, db):
         # open it, print the history
         # now get unread from server
         #and open chat 
-        if target == "1" or newChat:
-                newChat=False
+        if target == "1" or target.lower() == "y":
+                
             #open new chat
                             #so takes new name
                 #sends new name to server
@@ -595,6 +470,7 @@ def handle_messaging(username, db):
                 #w storesm sgs and sends them to server
                 client.sendall("INITIATE_NEW_CHAT".encode('utf-8'))
                 client.recv(1024)
+                
                 
                 target = input("Who would you like to open a new chat with? ")
                 client.sendall(target.encode('utf-8'))
@@ -654,133 +530,20 @@ def handle_messaging(username, db):
                     message = client.recv(1024).decode('utf-8')
                     client.send("OK".encode('utf-8'))
 
+                    unread_messages.append(message)
 
-
-                    if target and username and message:
-                        unread_messages.append(message)
-                        # cursor.execute("INSERT INTO History values(?,?,?)", (target, username, message))   
-                        # db.commit() 
-            print("THIS IS THE UNREAD MESSAGES")
-            print(unread_messages)   
+                    
             receiving_thread = threading.Thread(target=receiveChat, args=(username, target))
             receiving_thread.start()
             sendChat(messages_list, size, unread_messages, username, target, db)
                 
             
-        # if you open chat, it shows unread
-        # but before it stores it in unread, it check sif you're in the chat
-        # if you are in the chat, send it live
-        # if you are not in the chat, send it to unread    
 
-        # if option=="1" and anychats==False:
-        #     #ZABETA LATER
-        #     #client.sendall("INITIATE_CHAT".encode('utf-8'))
-        #     if msgGUI(USER_UNAVAILABLE) == -1:
-        #         USER_UNAVAILABLE = False
-        #     target = input("")
-        #     if target.lower() == "exit": #Exit if user cancels
-        #         return
-        #     client.sendall(target.encode('utf-8')) #Send target username to server
-        #     print("BUM BUM BUM")
-        #     response = client.recv(1024).decode('utf-8')
 
-        #     # if response == "NOT_ONLINE":
-        #     #     print("The selected user is not currently online. Please choose another user.")
 
-        #     if response =="ONLINE_AND_AVAILABLE":
-        #         print("LLLLL")
-        #         response = client.recv(1024).decode('utf-8')
-        #         if response == "REQUEST_ACCEPTED":
-        #             receiving_thread = threading.Thread(target=receiveChat, args=(target,))
-        #             receiving_thread.start()
-        #             sendChat(target)
-        #         #DO CHAT REJECTION CODE
-        #     elif response == "ONLINE_BUT_NOT_AVAILABLE":
-        #         #SO OPEN MY CHAT ONLY
-        #         print("TTTTTTTTT")
-        #         sendChat(target)  
-            
-        # elif option == "2":
-        #     client.sendall("LISTEN_FOR_CHAT".encode('utf-8'))
-        #     listenForIncomingChatRequest()
-            
-        # elif option=="3" and any_unread =="UNREAD":
-        #     client.sendall("READ_UNREAD".encode('utf-8'))
-            
-        #     print("Which unread messages would you like to read?")
-        #     username_list = client.recv(1024).decode('utf-8')
-        #     print(username_list)
-        #     choice = input("")
-        #     client.send(choice.encode('utf-8'))
-        #     response = client.recv(1024).decode('utf-8')
-        #     if response == "SUCCESS":
-        #         #empty terminal hon
-        #         client.send("OK".encode('utf-8'))
-        #         size = int(client.recv(1024).decode('utf-8'))
-        #         client.send("OK".encode('utf-8'))
-        #         print(f">>> {choice.upper()}")
-        #         print("Reading UNREAD chats ONLY. Type 'exit' to go back.")
-        #         print("")
-        #         print(size)
-        #         for i in range(size):
-        #             message = client.recv(1024).decode('utf-8')
-        #             client.send("OK".encode('utf-8'))
-                    
-        #             print(f"{choice}: {message}")
 
-        #         print("done") 
-        #         exit = input("Type 'exit' to close. ")
-        #         # if exit.lower() == "exit":
-        #         #     client.send("EXIT_CHAT".encode('utf-8'))
-        #         #     continue
-                
-
-def buyProducts():
-    client.send("BUY_PRODUCTS".encode('utf-8'))
-    client.recv(1024)
-    product = input("Which product would you like to buy? ")
-    client.sendall(product.encode('utf-8'))
-    print(client.recv(1024).decode('utf-8'))
-    client.sendall("Thanks".encode('utf-8'))
-    #print(client.recv(1024).decode('utf-8'))
     
-    return product
-                
-            
-def viewUsersProducts():
-    client.sendall("VIEW_USERS_PRODUCTS".encode('utf-8'))
-    client.recv(1024)
-    username = input("Enter the username of the user whose products you want to see: ")
-    client.sendall(username.encode('utf-8'))
-    n1 = (int) (client.recv(1024).decode('utf-8'))
-    table = PrettyTable()
-    table.field_names = ["Product Name", "Price (in $)", "Description"]
-    for i in range(n1):
-        temporary = client.recv(1024)
-        temporary = pickle.loads(temporary)
-        client.sendall("OK".encode('utf-8'))
-        table.add_row([temporary[0], temporary[1], temporary[2]])
-    emptyTerminal()
-    print(f"Viewing {username}'s products: ")   
-    print(table)
 
-     
-notifyMSG = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-notifyMSG.connect((socket.gethostbyname(socket.gethostname()),9999))
-    
-def view_buyers():
-    client.sendall("VIEW_BUYERS".encode('utf-8'))
-    data = client.recv(4096)
-    buyer_details = pickle.loads(data)
-
-    table = PrettyTable()
-    table.field_names = ["Product Name", "Buyer Username", "Buyer Name", "Price"]
-    
-    for detail in buyer_details:
-        print("Buyers for you products: ")
-        print(table)
-    else:
-        print("No buyers found for your products.")
         
 def handle_client(db):
     #notLoggedOut = True
@@ -801,10 +564,10 @@ def handle_client(db):
             viewAllUsers = False
             product = ""
             while True:
-                if viewAllUsers == False:
-                    #emptyTerminal()
-                    list_products()
-                viewAllUsers = False
+                # if viewAllUsers == False:
+                #     #emptyTerminal()
+                #     list_products()
+                # viewAllUsers = False
                 if addedProduct:
                     print(f"{product} successfully added")
                     addedProduct=False

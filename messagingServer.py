@@ -193,30 +193,7 @@ def authentication(connection, address, cursor, db):
         
 # def addSpaces(file1):
     
-def sendProducts(connection, db):
 
-    cursor = db.cursor()
-    ##SEND AS JSONN 
-    # cuz when we mae gui, we cant use pretty tables sl we need to be 
-    # ready to read the file
-  
-    
-    cursor.execute("SELECT * FROM Products")
-    productsByUser = cursor.fetchall()
-    connection.sendall(str(len(productsByUser)).encode('utf-8'))
-    response = connection.recv(1024).decode('utf-8')
-    print(response)
-    for i in range(len(productsByUser)):
-        connection.sendall(pickle.dumps(productsByUser[i]))
-        connection.recv(1024)
-    # t1 = cursor.fetchall()
-    # file1.write(t1)
-    # file1.close()
-    # file2 = open("ServerFiles/toBePrinted", 'rb')
-    # for lines in file2:
-    #     connection.sendall(lines)
-
-#"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 def sendUsersProducts(connection, db):
     cursor = db.cursor()
@@ -251,22 +228,6 @@ def sendOnlineUsers(connection, cursor):
 #server stores data in database
 #client 2 receives the data and prints it from the database
 
-def buyProducts(username, connection, cursor):
-    print("SHaA")
-    connection.send("23".encode('utf-8'))
-    product = connection.recv(1024).decode('utf-8')
-    connection.send("Product name received".encode('utf-8'))
-    connection.recv(1024)
-    cursor.execute('''SELECT name FROM Users WHERE username=?''', (username, ))
-    name = cursor.fetchone()
-    cursor.execute('''SELECT price FROM Products WHERE product_name=?''', (product))
-    price = cursor.fetchone()
-    cursor.execute("INSERT INTO Purchases (buyer_username, buyer_name, product_name, product_price) VALUES (?,?)", (username, name, product, price,))
-    cursor.execute("DELETE FROM Products WHERE product_name = ?", (product,))
-    db.commit()
-    #connection.sendall("toni".encode('utf-8'))
-    #iza badak make a random number generator
-    #to decide how much time till u get the item
     
 inChatOf = {}
 
@@ -276,8 +237,7 @@ def sendChat(username,target, connection):
         messageToSend = incomingQueues[username].get()
         if messageToSend.lower() == "exit": 
             connection.sendall("EXIT_CHAT".encode('utf-8'))
-            #inChatOf[target] = ""  
-            inChatOf[username] = ""  
+            inChatOf[target] = ""  
             break
         connection.sendall(messageToSend.encode('utf-8'))
         
@@ -286,24 +246,20 @@ def sendChat(username,target, connection):
 def receiveChat(username,target, connection, db):
     db = sqlite3.connect('db.AUBoutique')
     cursor = db.cursor()
-    #connection.send("0".encode('utf-8'))
+    connection.send("0".encode('utf-8'))
     while True:
         messageToSend = connection.recv(1024).decode('utf-8')
-
-        if messageToSend == "EXIT_CHAT":
-            #inChatOf[target] = ""  
-            inChatOf[username] = ""  
-            incomingQueues[target].put(messageToSend)
-            break
         
-        if username in inChatOf and target in inChatOf and inChatOf[username] ==target and inChatOf[target]==username:
+        if username in inChatOf and inChatOf[username] ==target:
             incomingQueues[target].put(messageToSend)
         else: 
             if username and target and messageToSend:
                 cursor.execute("INSERT INTO Messages values(?, ?, ?)", (username, target, messageToSend,))
-                db.commit()
             else: print("BUGG")
 
+        if messageToSend == "EXIT_CHAT":
+            inChatOf[target] = username  
+            break
 
 
 
@@ -362,16 +318,14 @@ def handle_messaging(username, connection, db):
         
         #connection.send("OK".encode('utf-8'))
         #response = connection.recv(1024).decode('utf-8')
-        if option == "EXIT":
-            break
-        elif option == "INITIATE_NEW_CHAT":
+        if option == "INITIATE_NEW_CHAT":
             #start a new chat with a user and thats it
-            connection.send("OK".encode('utf-8'))
+            connection.send("OKbruv".encode('utf-8'))
             target = connection.recv(1024).decode('utf-8')
             
             print(target)
             
-            inChatOf[username]=target
+            
             #connection.send("OK".encode('utf-8'))
             receivingUNAVAILABLE_thread = threading.Thread(target=receiveChatUNAVAILABLE, args=(username,target, connection, db))
             receivingUNAVAILABLE_thread.start()
@@ -388,7 +342,7 @@ def handle_messaging(username, connection, db):
             # if u open a chat,
             target = connection.recv(1024).decode('utf-8')
             #target hon is the username you want to open chat with
-            inChatOf[username] = target    
+            inChatOf[target] = username    
                 #this sends a chat request by putting it in a queue
                 #w then the queue tabaa l receiver on the server reads thos
                 # incomingQueues[target].put(username)
@@ -409,9 +363,7 @@ def handle_messaging(username, connection, db):
             for i in range(len(messages)):
                 connection.send(messages[i][0].encode('utf-8'))
                 connection.recv(1024)
-            
-            cursor.execute("DELETE FROM Messages WHERE source=? AND destination=?", (target,username))
-            db.commit()
+            print("bruvvvvvvvvvvvvvvvvv")
                 # exit = connection.recv(1024).decode('utf-8')
                 # if exit == "EXIT_CHAT":
                 #     continue
@@ -436,185 +388,13 @@ def handle_messaging(username, connection, db):
         
   
         
-        
-    #     if option == "INITIATE_CHAT": #sends chat request for somekne waiting
-    #         #sendOnlineUsers(connection, cursor)            
-    #         target = connection.recv(1024).decode('utf-8')
-            
-    #         # IF  THE USER IS ONLINE
-    #         # WE HAVE
-    #         print("THE TARGET:") 
-    #         print(target)
-    #         if target in OnlineUserConnections:
-    #             print("AAAAAAAAAAAAAAAA")
-    #             if target in WaitingForConnection:
-    #                 connection.sendall("ONLINE_AND_AVAILABLE".encode('utf-8'))
-    #                 #Make them online 
-    #                 # if username not in OnlineUserConnections:
-    #                 #     OnlineUserConnections[username] = connection
-                    
-    #                 #TRIGGER CHAT REQUEST
-    #                 incomingQueues[target].put(username)
-    #                 response = incomingQueues[username].get()
-    #                 connection.send(response.encode('utf-8'))
-
-    #                 if response == "REQUEST_ACCEPTED":
-    #                     sending_thread = threading.Thread(target=sendChat, args=(username, target, connection,))
-    #                     receiving_thread = threading.Thread(target=receiveChat, args=(username, target, connection, db,))
-    #                     sending_thread.start()
-    #                     receiving_thread.start()
-                        
-    #                     sending_thread.join()
-    #                     receiving_thread.join()
-                        
-    #             else: # if target online but not waiting for a connection
-    #                 connection.send("ONLINE_BUT_NOT_AVAILABLE".encode('utf-8'))
-    #                 print("broski")
-    #                 receivingUNAVAILABLE_thread = threading.Thread(target=receiveChatUNAVAILABLE, args=(username,target, connection, db))
-    #                 receivingUNAVAILABLE_thread.start()
-    #                 receivingUNAVAILABLE_thread.join()
-                    
-    #         else:
-    #             # IF THE USER NOT ONLINE, SAVE IN DATABASE
-    #             connection.sendall("NOT_ONLINE".encode('utf-8'))
-                    
-                    
-                    
-                    
-                    
-                    
-                    
+    
         
         
-    #     if option == "INITIATE_CHAT": #sends chat request for somekne waiting
-    #         #sendOnlineUsers(connection, cursor)            
-    #         target = connection.recv(1024).decode('utf-8')
-            
-    #         # IF  THE USER IS ONLINE
-    #         # WE HAVE
-    #         print("THE TARGET:") 
-    #         print(target)
-    #         if target in OnlineUserConnections:
-    #             print("AAAAAAAAAAAAAAAA")
-    #             if target in WaitingForConnection:
-    #                 connection.sendall("ONLINE_AND_AVAILABLE".encode('utf-8'))
-    #                 #Make them online 
-    #                 # if username not in OnlineUserConnections:
-    #                 #     OnlineUserConnections[username] = connection
-                    
-    #                 #TRIGGER CHAT REQUEST
-    #                 incomingQueues[target].put(username)
-    #                 response = incomingQueues[username].get()
-    #                 connection.send(response.encode('utf-8'))
-
-    #                 if response == "REQUEST_ACCEPTED":
-    #                     sending_thread = threading.Thread(target=sendChat, args=(username, target, connection,))
-    #                     receiving_thread = threading.Thread(target=receiveChat, args=(username, target, connection,))
-    #                     sending_thread.start()
-    #                     receiving_thread.start()
-                        
-    #                     sending_thread.join()
-    #                     receiving_thread.join()
-                        
-    #             else: # if target online but not waiting for a connection
-    #                 connection.send("ONLINE_BUT_NOT_AVAILABLE".encode('utf-8'))
-    #                 print("broski")
-    #                 receivingUNAVAILABLE_thread = threading.Thread(target=receiveChatUNAVAILABLE, args=(username,target, connection, db))
-    #                 receivingUNAVAILABLE_thread.start()
-    #                 receivingUNAVAILABLE_thread.join()
-                    
-    #         else:
-    #             # IF THE USER NOT ONLINE, SAVE IN DATABASE
-    #             connection.sendall("NOT_ONLINE".encode('utf-8'))
-                    
-
-
-    #     elif option == "LISTEN_FOR_CHAT":
-    #         # if username not in OnlineUserConnections:
-    #         #     OnlineUserConnections[username] = connection
-    #         WaitingForConnection[username] = connection
-    #         #wait here until you get a msg in the queue. When you do, tell client that theres a request
-    #         senderUsername = incomingQueues[username].get()
-    #         connection.sendall(senderUsername.encode('utf-8'))
-    #         response = connection.recv(1024).decode('utf-8')
-    #         incomingQueues[senderUsername].put(response)
-            
-    #         if response == "REQUEST_ACCEPTED":
-    #             sending_thread = threading.Thread(target=sendChat, args=(username, senderUsername, connection,))
-    #             receiving_thread = threading.Thread(target=receiveChat, args=(username, senderUsername, connection,))
-    #             sending_thread.start()
-    #             receiving_thread.start()
-                    
-    #             sending_thread.join()
-    #             receiving_thread.join()
-                
-    #     elif option == "READ_UNREAD":
-            # cursor.execute("SELECT DISTINCT source FROM Messages WHERE destination=?",(username,))
-            # usernames = cursor.fetchall()
-            # #if we reached here, its guaraunteed the array is not empty
-            # username_list = ""
-            # for i in range(len(usernames)):
-            #     username_list += "- " + usernames[i][0] + "\n"
-            # connection.send(username_list.encode('utf-8'))
-            
-            # choice = connection.recv(1024).decode('utf-8')
-            # cursor.execute("SELECT message FROM Messages WHERE source=? AND destination=?", (choice, username))
-            # messages = cursor.fetchall()
-            # if not messages:
-            #     connection.send("NO_SUCH_USER".encode('utf-8'))
-            # else:
-            #     connection.send("SUCCESS".encode('utf-8'))
-            #     connection.recv(1024)
-            #     connection.send(f"{len(messages)}".encode('utf-8'))
-            #     connection.recv(1024)
-            #     print("AMOUNT OF MSGS: " + str(len(messages)))
-            #     print(messages)
-            #     for i in range(len(messages)):
-            #         connection.send(messages[i][0].encode('utf-8'))
-            #         connection.recv(1024)
-            #     print("bruvvvvvvvvvvvvvvvvv")
-            #     # exit = connection.recv(1024).decode('utf-8')
-            #     # if exit == "EXIT_CHAT":
-            #     #     continue
-    # # except Exception as e:
-    # #     connection.sendall("NOT_ONLINE".encode('utf-8'))
-        
-        
-def logOutUser(connection, username, cursor, db):
-     del OnlineUserConnections[username]
-     connection.sendall("LOGOUT_SUCCESS".encode('utf-8'))
     
         
             
-#Handle add product
-def add_product(connection, username,cursor,  db):
-    connection.sendall("Opened add products now.".encode('utf-8'))
-    try:
-        product_name, price, description = connection.recv(1024).decode('utf-8').split(",")
-        print (product_name)
-        print(price)
-        print(description)
-        print(username)
-        cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?)", (username, product_name, float(price), description,))
-        db.commit()
 
-        #sendProducts(connection, db)
-        connection.sendall("PRODUCT_ADDED".encode('utf-8'))
-
-
-    except Exception as e:
-        connection.sendall("ERROR: Cannot ADD product".encode('utf-8'))
-
-def view_buyers(connection, username, db):
-    cursor = db.cursor()
-    cursor.execute('''SELECT product_name FROM Products WHERE username=?''', (username,))
-    product_names = cursor.fetchall()
-    buyer_details = []
-    for product in product_names:
-        cursor.execute('''SELECT product_name, buyer_username, buyer_name, product_price FROM Purchases WHERE product_name=?''', (product,))
-        buyer_details.extend(cursor.fetchall())
-    
-    connection.sendall(pickle.dumps(buyer_details))
 
 def handle_client(connection, address):
     
