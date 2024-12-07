@@ -1,0 +1,96 @@
+from PyQt5.QtWidgets import QApplication, QLabel, QHBoxLayout, QWidget
+from PyQt5.QtGui import QPainter, QPolygonF, QRegion
+from PyQt5.QtCore import Qt, QPointF, QRectF
+
+
+class StarWidget(QLabel):
+    def __init__(self, index, on_hover, on_click):
+        super().__init__()
+        self.index = index
+        self.on_hover = on_hover
+        self.on_click = on_click
+        self.setFixedSize(50, 50)  # Fixed size for each star
+        self.state = "empty"  # Default state: empty
+
+    def set_state(self, state):
+        self.state = state
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Create star shape
+        polygon = QPolygonF([
+            QPointF(25, 0), QPointF(31, 18), QPointF(50, 18),
+            QPointF(35, 30), QPointF(40, 50), QPointF(25, 38),
+            QPointF(10, 50), QPointF(15, 30), QPointF(0, 18),
+            QPointF(19, 18)
+        ])
+
+        # Draw based on the state
+        if self.state == "full":
+            painter.setBrush(Qt.yellow)
+            painter.drawPolygon(polygon)
+        elif self.state == "half":
+            painter.setBrush(Qt.yellow)
+            painter.setClipRegion(QRegion(QRectF(0, 0, self.width() / 2, self.height()).toRect()))
+            painter.drawPolygon(polygon)
+            painter.setClipping(False)
+            painter.setBrush(Qt.lightGray)
+            painter.drawPolygon(polygon)
+        else:  # Empty
+            painter.setBrush(Qt.lightGray)
+            painter.drawPolygon(polygon)
+
+    def mouseMoveEvent(self, event):
+        x = event.pos().x()
+        half = x < self.width() / 2
+        self.on_hover(self.index, half)
+
+    def mousePressEvent(self, event):
+        x = event.pos().x()
+        half = x < self.width() / 2
+        self.on_click(self.index, half)
+
+
+class StarRating(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.layout = QHBoxLayout()
+        self.stars = []
+        self.rating = 0
+
+        for i in range(5):
+            star = StarWidget(i + 1, self.handle_hover, self.handle_click)
+            self.layout.addWidget(star)
+            self.stars.append(star)
+
+        self.setLayout(self.layout)
+
+    def handle_hover(self, index, half):
+        for i, star in enumerate(self.stars):
+            if i + 1 < index:
+                star.set_state("full")
+            elif i + 1 == index:
+                star.set_state("half" if half else "full")
+            else:
+                star.set_state("empty")
+
+    def handle_click(self, index, half):
+        self.rating = index - 0.5 if half else index
+        print(f"Selected rating: {self.rating}")
+        for i, star in enumerate(self.stars):
+            if i + 1 < index:
+                star.set_state("full")
+            elif i + 1 == index:
+                star.set_state("half" if half else "full")
+            else:
+                star.set_state("empty")
+
+
+if __name__ == "__main__":
+    app = QApplication([])
+    window = StarRating()
+    window.show()
+    app.exec_()
