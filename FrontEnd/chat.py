@@ -8,7 +8,7 @@ from PyQt5.QtGui import QPixmap
 from ..BackEnd import client
 from PyQt5.QtCore import QBuffer, QByteArray
 #from . import login
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 import threading
 
 # users = client.getAllUsers()
@@ -80,7 +80,8 @@ class MainPage(QWidget):
         client.addToInChat(user)
         self.chat_window = MessagingWindow(user, last_message, myusername)
         self.chat_window.show()  # Show the window properly, make sure this is not closed immediately
-
+        
+        
 
 class MessagingWindow(QWidget):
     def __init__(self, user, last_message, myusername):
@@ -96,8 +97,12 @@ class MessagingWindow(QWidget):
         # receivingGUI = threading.Thread(target=self.receivetextMessage, args=(self))
         # receivingGUI.start()
 
-        receivingGUI = threading.Thread(target=self.receivetextMessage)
-        receivingGUI.start()
+        # receivingGUI = threading.Thread(target=self.receivetextMessage)
+        # receivingGUI.start()
+        
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.receivetextMessage)
+        self.timer.start(100)  
 
         self.initUI(myusername)
         self.showHistory(self.user, myusername)
@@ -119,6 +124,7 @@ class MessagingWindow(QWidget):
     def imgMessageHIST(self, msg, alignment):
         """Add an image message to the chat."""
         # Create a frame for the image message
+        
         message_box = QFrame()
         message_box.setStyleSheet("""
             background-color: #DCF8C6;
@@ -278,63 +284,110 @@ class MessagingWindow(QWidget):
             self.scroll_area.verticalScrollBar().setValue(
                 self.scroll_area.verticalScrollBar().maximum()
             )
+    def display_message(self, message):
+            # This method will update the GUI safely in the main thread
+            print(f"Displaying message: {message}")
+
+            # Create a message box
+            message_box = QFrame(self.messages_container)
+            message_box.setStyleSheet("""
+                background-color: #DCF8C6;
+                color: black;
+                border-radius: 8px;
+                padding: 5px 8px;
+                margin: 2px;
+            """)
+            message_box.setContentsMargins(0, 0, 0, 0)
+            message_box.setFrameShape(QFrame.NoFrame)
+
+            # Add the message text
+            message_label = QLabel(message, message_box)
+            message_label.setWordWrap(True)
+            message_label.setStyleSheet("font-size: 12px; margin: 0;")
+            message_label.setMaximumWidth(350)
+
+            # Layout for the message box
+            box_layout = QVBoxLayout(message_box)
+            box_layout.setContentsMargins(5, 5, 5, 5)
+            box_layout.addWidget(message_label)
+
+            # Adjust the size of the message box
+            message_box.adjustSize()
+
+            # Add the message box to the layout
+            self.messages_layout.addWidget(message_box, alignment=Qt.AlignLeft)
+
+            # Scroll to the latest message
+            self.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().maximum())
             
+              
     def receivetextMessage(self):
         # Get the typed message
-        while True:
-            message = client.receivedMSG.get()
-            print("CHAT, RECEIVED MSG: " + message)
-            if message:  # Only proceed if the message is not empty
-                # Create a message box
-                message_box = QFrame(self.messages_container)
-                message_box.setStyleSheet("""
-                    background-color: #DCF8C6;
-                    color: black;
-                    border-radius: 8px;  /* Smaller corner radius for a tighter look */
-                    padding: 5px 8px;  /* Reduced padding for a smaller box */
-                    margin: 2px;  /* Slightly reduced margin */
-                """)
-                message_box.setContentsMargins(0, 0, 0, 0)
-                message_box.setFrameShape(QFrame.NoFrame)
+        # while True:
+        message = client.popFromTheMSGQueue() #client.receivedMSG.get()
+        self.display_message(message)
+        
+        #print("CHAT, RECEIVED MSG: " + message)
+        #message = message.decode()
+        print("BRAVOO SAR MAAK L MSG")
+            # if message:  # Only proceed if the message is not empty
+            #     print("RICHHHHH")
+            #     print("le message "+message)
+            #     # Create a message box
+            #     message_box = QFrame(self.messages_container)
+            #     message_box.setStyleSheet("""
+            #         background-color: #DCF8C6;
+            #         color: black;
+            #         border-radius: 8px;  /* Smaller corner radius for a tighter look */
+            #         padding: 5px 8px;  /* Reduced padding for a smaller box */
+            #         margin: 2px;  /* Slightly reduced margin */
+            #     """)
+            #     message_box.setContentsMargins(0, 0, 0, 0)
+            #     message_box.setFrameShape(QFrame.NoFrame)
 
-                # Add the message text
-                message_label = QLabel(message, message_box)
-                message_label.setWordWrap(True)  # Allow wrapping of long text
-                message_label.setStyleSheet("""
-                    font-size: 12px;  /* Slightly smaller font size */
-                    margin: 0;  /* No margin to tightly fit the text */
-                """)
+            #     # Add the message text
+            #     message_label = QLabel(message, message_box)
+            #     message_label.setWordWrap(True)  # Allow wrapping of long text
+            #     message_label.setStyleSheet("""
+            #         font-size: 12px;  /* Slightly smaller font size */
+            #         margin: 0;  /* No margin to tightly fit the text */
+            #     """)
                 
-                # Set the maximum width of the message box so the message wraps if it exceeds that width
-                message_label.setMaximumWidth(350)  # Set a reasonable max width for the message box
+            #     # Set the maximum width of the message box so the message wraps if it exceeds that width
+            #     message_label.setMaximumWidth(350)  # Set a reasonable max width for the message box
 
-                # Layout for the message box
-                box_layout = QVBoxLayout(message_box)
-                box_layout.setContentsMargins(5, 5, 5, 5)  # Tighten margins for a compact layout
-                box_layout.addWidget(message_label)
+            #     # Layout for the message box
+            #     box_layout = QVBoxLayout(message_box)
+            #     box_layout.setContentsMargins(5, 5, 5, 5)  # Tighten margins for a compact layout
+            #     box_layout.addWidget(message_label)
 
-                # Adjust the size of the message box based on its content
-                message_box.adjustSize()
+            #     # Adjust the size of the message box based on its content
+            #     message_box.adjustSize()
 
-                # Align the message box (right alignment for sent messages)
-                #if (align == "right"):
-                #alignment = Qt.AlignRight
-                #else:
-                alignment = Qt.AlignLeft
-                self.messages_layout.addWidget(message_box, alignment=alignment)
+            #     # Align the message box (right alignment for sent messages)
+            #     #if (align == "right"):
+            #     #alignment = Qt.AlignRight
+            #     #else:
+            #     alignment = Qt.AlignLeft
+            #     self.messages_layout.addWidget(message_box, alignment=alignment)
 
-                # Clear the input field
-                self.input_field.clear()
+            #     # Clear the input field
+            #     self.input_field.clear()
 
-                # Ensure the latest message is visible
-                self.scroll_area.verticalScrollBar().setValue(
-                    self.scroll_area.verticalScrollBar().maximum()
-                )
+            #     # Ensure the latest message is visible
+            #     self.scroll_area.verticalScrollBar().setValue(
+            #         self.scroll_area.verticalScrollBar().maximum()
+            #     )
    
     def textMessageHist(self, message, align):
 
+
         if message:  # Only proceed if the message is not empty
             # Create a message box
+            
+            if isinstance(message, bytes):
+                message = message.decode('utf-8')
+
             message_box = QFrame(self.messages_container)
             message_box.setStyleSheet("""
                 background-color: #DCF8C6;
@@ -384,7 +437,7 @@ class MessagingWindow(QWidget):
 if __name__ == "__main__":
     myusername = client.getTheUsername()
     print("pRINTING USERS:")
-    print(users)
+    #print(users)
     print("userss")
     app = QApplication(sys.argv)
     window = MainPage()

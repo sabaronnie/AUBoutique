@@ -73,7 +73,10 @@ cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, pro
 db.commit()
 Purchases = []
 
-
+print("dont forget to remove this ya bhim")
+# cursor.execute("INSERT INTO Users values(?,?,?,?,?)", ("ronnie", "rws", "ron", "12345678a", 0))
+# cursor.execute("INSERT INTO Users values(?,?,?,?,?)", ("ronnie", "rwsj", "farid", "12345678a", 0))
+db.commit()
 
 #cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('farid', 'Smartphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
 #cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('ron', 'Smartphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
@@ -573,6 +576,8 @@ def handle_messaging(username, connection, db):
     # try:
    # while True:
     target = userQueues[connection]['handleMSGQueue_R'].get()
+    print("USERNAMEEE" + username)
+    print("THE GODFORSAKEN TARGET:" + target)
     # if target == "EXIT":break
     info = f"{OnlineUserConnections[target][1]},{OnlineUserConnections[target][2]}"
     userQueues[connection]['sendingQueue'].put((header, info))

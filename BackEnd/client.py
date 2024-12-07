@@ -665,7 +665,7 @@ def formatImage(username, filename):
     for line in f:
         paylod += line
         
-    info = header.encode() + delimiter + username.encode() + delimiter + payload
+    info = header.encode() + delimiter + username.encode() + delimiter + payload + ending
     return info
 
 
@@ -691,7 +691,7 @@ def sendChatClient(msgSocket, username, target, msgtype, message):
     #     break
         #print(f"You: {message}")
     if msgtype == "TEXT":
-        info = msgtype.encode() + delimiter + username.encode() + delimiter + f"{message}".encode()
+        info = msgtype.encode() + delimiter + username.encode() + delimiter + f"{message}".encode() + ending
         msgSocket.send(info)
     elif msgtype =="IMG":
         info = formatImage(username, message)
@@ -704,8 +704,20 @@ def sendChatClient(msgSocket, username, target, msgtype, message):
 
 receivedMSG = queue.Queue()
 
+def popFromTheMSGQueue():
+    global receivedMSG
+    message = receivedMSG.get()
+        
+    return message
+
+# def addToMSGQueue():
+#     global receivedMSG
+
+
 def receiveChatAVAILABLE(username, target, message):
+    global receivedMSG
     header = "SEND_CHAT"
+    print("OK FA RECEIVE CHAT WAS CALLED SHAWARMA")
     msgHistoryDB = sqlite3.connect("db.msgHistory")
     cursor = msgHistoryDB.cursor()
     #while True:
@@ -717,11 +729,14 @@ def receiveChatAVAILABLE(username, target, message):
     # if response == "EXIT_CHAT":
     #     print("User has left the chat.")
     #     return
+    print("feeefoooofeeeeeeeefooooooo")
     if username and target and response:
+        # print("AAM BHOT " + response + "IN MESSAGES apple")
         cursor.execute("INSERT INTO History values(?,?,?, ?)", (username, target, "TEXT", response))   
         msgHistoryDB.commit()
         
     receivedMSG.put(message)
+    print("THIS IS THE MESSAGE WE'RE MEANT TO RECEIVED")
     print(f"{target}: {response}")
 
 inChat = {}
@@ -753,14 +768,32 @@ def constantlylistenforMessages(username):
         connection, address = P2PServer.accept()
         print("ana officially hon ya zabreyete")
         #socketList.append(connection)
+        receive = b""
         remaining = b""
         #header.encode() + delimiter + f"{username}".encode() + delimiter + f"{message}".encode()
+        count = 0
         while True:
+            if count < 15:
+                print(count)
+                print("fetit aal while loop k?")
+                print("REMAINING, BEFORE: ")
+                print(remaining)
             if not remaining:
                 remaining += connection.recv(1024)
+                if count < 15:
+                    print("successly received shi farrouj")
+            else:
+                if count< 15:
+                    print("The REMAINING")
+                    print(remaining)
             
+            count+=1
+
             while remaining:
                 split_result = remaining.split(ending, 1)
+                if count < 15:
+                    print(split_result)
+                    print("LENGTH: " + str(len(split_result)))
                 if len(split_result) == 1: #if there was no ending
                     break
                 # If split_result has more than one part, unpack it
@@ -768,10 +801,18 @@ def constantlylistenforMessages(username):
                     receive, remaining = split_result
                     
                 #Either TEXT or 
+                print("lah ebke")
                 msgtype, target, message = receive.split(delimiter, 2)
-                header = header.decode('utf-8')
+                msgtype = msgtype.decode('utf-8')
                 target = target.decode()
-                print("BACKEND TARGET:  " + target)
+                if count < 15:
+                    print(msgtype)
+                    print(target)
+                    print(message)
+                    print("BACKEND TARGET:  " + target)
+                    
+                #temp
+                message=message.decode()
             # else: 
             #target,msgToHandle = connection.recv(1024).decode().split(",") #constListenMSGQueue_R.get().split(",")
                 # if message == "EXIT_CHAT":
@@ -831,12 +872,12 @@ def handle_messaging(username, target):
     cursor = msgHistoryDB.cursor()
     USER_UNAVAILABLE = False
 
-    cursor.execute("SELECT content FROM History")
-    existing_chats = cursor.fetchall()
-    if not existing_chats:
-        print("You have no past chats! Want to create a new chat? (y/n)")
-        print("'exit' to Exit.")
-        newChat = True
+    # cursor.execute("SELECT content FROM History")
+    # existing_chats = cursor.fetchall()
+    # if not existing_chats:
+    #     print("You have no past chats! Want to create a new chat? (y/n)")
+    #     print("'exit' to Exit.")
+    #     newChat = True
 
     # if target =="exit": 
     #     sendingQueue.put((header, "EXIT"))
@@ -848,8 +889,12 @@ def handle_messaging(username, target):
     # status = handleMSGQueue_R.get()
     # print("STATUS: " + status)
     # if status == "ONLINE": #do p2p directly even if not in chat
+    #print("DONTTTTT CHECKKK")
     targetIP, targetPort = handleMSGQueue_R.get().split(",") 
     targetPort = int(targetPort)
+    #print("CHECK THIS OUTG")
+    print(targetIP)
+    print(targetPort)
     
     msgSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     msgSocket.connect((targetIP,targetPort))

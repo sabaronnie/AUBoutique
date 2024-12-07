@@ -69,9 +69,9 @@ class MainWindow(QMainWindow):
 
         rectangle = QLabel()
         rectangle.setFixedSize(260, 420)
+        #box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.9);
         rectangle.setStyleSheet("""
             background-color: #36393e;
-            box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.9);
             border-radius: 5px;
         """)
 
