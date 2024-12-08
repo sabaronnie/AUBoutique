@@ -6,6 +6,7 @@ import subprocess
 subprocess.run([sys.executable, "-m", "pip", "install", "pyqt5"])
 
 import sys
+from ..BackEnd import client
 from PyQt5.QtWidgets import QGridLayout, QStackedLayout, QMainWindow, QApplication, QTextEdit, QFrame, QScrollArea, QTableWidgetItem, QFileDialog, QTableWidget, QFormLayout, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QSpinBox, QTabWidget, QMessageBox
 import PyQt5.QtGui as qtg
 from PyQt5.QtGui import QIcon, QFont, QPixmap
@@ -140,13 +141,14 @@ class MainWindow(QMainWindow):
         """)
         desc_layout.addWidget(descText)
         desc_layout.addWidget(desc)
-
+        self.imageFile = ""
         # Upload Image
         img_layout = QVBoxLayout()
         imgText = QLabel("Upload Image")
         imgText.setStyleSheet("color: #99aab5; font-weight: bold; margin: 0px 18px;")
         img_upload = QPushButton("Upload")
         img_upload.clicked.connect(self.upload_image)
+
         img_upload.setFixedSize(70, 25)
         img_upload.setStyleSheet("""
             QPushButton {
@@ -172,7 +174,7 @@ class MainWindow(QMainWindow):
         submit_layout = QFormLayout()
         Empty = QLabel()
         Submit = QPushButton("Create")
-        
+        #Submit.clicked.connect(lambda checked: putProduct())
         Submit.setFixedSize(245, 30)
         Submit.setStyleSheet("""
             QPushButton {
@@ -215,27 +217,24 @@ class MainWindow(QMainWindow):
 
         central_widget.setStyleSheet("padding: 0px; margin: 0px;")
         central_widget.setLayout(mainlayout)
-        Submit.clicked.connect(lambda: self.validate_inputs(name, price, desc))
+        Submit.clicked.connect(lambda: self.validate_inputs(name.text(), price.text(), desc.text()))
     def validate_inputs(self, name, price, description):
         """Validate the inputs for all fields.""" 
         # Check if any of the fields are empty
-        if not name.text() or not price.text() or not description.text():
+        if not name or not price or not description:
             self.show_error("Please fill in all the fields.")
             return
-        price_value = float(price.text())  # Use float() to allow decimal values as well
+        price_value = float(price)  # Use float() to allow decimal values as well
         if price_value < 0:
             self.show_error("Price cannot be negative.")
             return
-        
+        client.add_product(name, price, description, self.imageFile)
+
     def upload_image(self):
         options = QFileDialog.Options()
         file, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.bmp *.gif)", options=options)
+        self.imageFile = file if file else None
 
-        if file:
-            pixmap = QPixmap(file)
-            self.image_label.setPixmap(pixmap)
-            self.image_label.setScaledContents(True)
-            self.resize(pixmap.width(), pixmap.height())
     def show_error(self, message):
         """Show an error message box.""" 
         QMessageBox.critical(self, "Error", message)

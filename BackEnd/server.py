@@ -78,8 +78,9 @@ print("dont forget to remove this ya bhim")
 # cursor.execute("INSERT INTO Users values(?,?,?,?,?)", ("ronnie", "rwsj", "farid", "12345678a", 0))
 db.commit()
 
-#cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('farid', 'Smartphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
-#cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('ron', 'Smartphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
+# cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('farid', 'Smartfphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
+# cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('ron', 'Smartpgghone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
+# db.commit()
 
 def computeAvgRating(owner, product, userRating, cursor, db):
     cursor.execute("SELECT avgRating, numberofRatings FROM Products WHERE product_name=? AND username=?", (product, owner))
@@ -408,14 +409,21 @@ def picture(connection, db):
 import json
 
 def sendProducts(connection, db):
+    
     header= "SEND_PRODUCTS"
-    cursor = db.cursor()
+    db2 = sqlite3.connect('db.AUBoutique')
+    cursor = db2.cursor()
     
     cursor.execute("SELECT * FROM Products WHERE status=1")
     productsByUser = cursor.fetchall()
     userQueues[connection]['sendingQueue'].put((header, str(len(productsByUser))))
     for i in range(len(productsByUser)):
-        userQueues[connection]['sendingQueue'].put((header, json.dumps(productsByUser[i])))
+        print("pp")
+        print(productsByUser[i])
+        test = json.dumps(productsByUser[i])
+        userQueues[connection]['sendingQueue'].put((header, test))
+        print("JSON:")
+        print(test)
 
 
 #"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 

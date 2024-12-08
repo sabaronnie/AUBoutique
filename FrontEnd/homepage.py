@@ -1,4 +1,5 @@
 import sys
+import sqlite3
 from PyQt5.QtWidgets import QGridLayout, QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QDialog, QDialogButtonBox, QLineEdit
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor
 from PyQt5.QtCore import Qt, QSize
@@ -8,17 +9,48 @@ from .profile import profileInfo
 from .createproduct import MainWindow
 from ..BackEnd import client
 
-products = [
-    {"name": "Green Apple from Batroun, Lebanon.", "price": "$10", "description": "A great product from the lush orchards of Lebanon.","rating": 0, "owner": "Owner 1", "numberOfRatings" : 0},
-    {"name": "Premium Red Grapes", "price": "$15", "description": "Sweet and fresh red grapes.","rating": 0, "owner": "Owner 2", "numberOfRatings" : 0},
-    {"name": "Golden Pears", "price": "$12", "description": "Crisp and juicy golden pears.","rating": 0, "owner": "Owner 3", "numberOfRatings" : 0},
-    {"name": "Exotic Mango", "price": "$20", "description": "Fresh tropical mangoes.", "rating": 0,"owner": "Owner 4", "numberOfRatings" : 0},
-    {"name": "Fresh Blueberries", "price": "$18", "description": "Organic blueberries.","rating": 0, "owner": "Owner 5", "numberOfRatings" : 0},
-    {"name": "Ripe Strawberries", "price": "$22", "description": "Sweet and delicious strawberries.","rating": 0, "owner": "Owner 6", "numberOfRatings" : 0},
-]
+# products = [
+#     {"name": "Green Apple from Batroun, Lebanon.", "price": "$10", "description": "A great product from the lush orchards of Lebanon.","rating": 0, "owner": "Owner 1", "numberOfRatings" : 0},
+#     {"name": "Premium Red Grapes", "price": "$15", "description": "Sweet and fresh red grapes.","rating": 0, "owner": "Owner 2", "numberOfRatings" : 0},
+#     {"name": "Golden Pears", "price": "$12", "description": "Crisp and juicy golden pears.","rating": 0, "owner": "Owner 3", "numberOfRatings" : 0},
+#     {"name": "Exotic Mango", "price": "$20", "description": "Fresh tropical mangoes.", "rating": 0,"owner": "Owner 4", "numberOfRatings" : 0},
+#     {"name": "Fresh Blueberries", "price": "$18", "description": "Organic blueberries.","rating": 0, "owner": "Owner 5", "numberOfRatings" : 0},
+#     {"name": "Ripe Strawberries", "price": "$22", "description": "Sweet and delicious strawberries.","rating": 0, "owner": "Owner 6", "numberOfRatings" : 0},
+# ]
+db = sqlite3.connect('db.AUBoutique')
+db.execute("PRAGMA foreign_keys=on")
+cursor = db.cursor()
 
-#products = client.populateProductsArray()
-wallet1 = 25  # The user's wallet balance
+products = []
+# products = client.populateProductsArray()
+  # The user's wallet balance
+# def populateProductsArray(selected_currency="USD"):
+#     returnedArray = []
+
+#     cursor.execute("SELECT * FROM Products WHERE status=1")
+#     allTheProducts = cursor.fetchall()
+
+#     for i in range(n):
+#         for j in range(len(temporary)):
+#             product_currency = temporary[9]  # Assuming currency is at index 9
+#             price = float(temporary[5])
+#             if product_currency != selected_currency:
+#                 price = convert(product_currency, selected_currency, price)
+#             returnedArray.append(
+#                 {
+#                     "owner": temporary[0],
+#                     "name": temporary[1],
+#                     "quantity": temporary[2],
+#                     "rating": temporary[3],
+#                     "numberOfRatings": temporary[4],
+#                     "price": price,
+#                     "description": temporary[6],
+#                     "filename": temporary[7],
+#                     "status": temporary[8],
+#                     "currency": selected_currency
+#                 }
+#             )
+#     return returnedArray
 
 class General1(QMainWindow):
     def __init__(self, username, password):
@@ -26,9 +58,13 @@ class General1(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.setMinimumSize(985, 820)
         self.setWindowTitle("AUBoutique")
-        self.initUI(username, password)
+        cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
+        wallet1 = cursor.fetchone()[0]
+        self.initUI(username, password, wallet1)
+        
 
-    def initUI(self, username, password):
+
+    def initUI(self, username, password, wallet1):
         # Main widget to hold all content
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
@@ -43,7 +79,7 @@ class General1(QMainWindow):
         self.banner_widget = self.create_banner()
 
         # Create the tab buttons at the bottom of the banner
-        self.tab_buttons_widget = self.create_tab_buttons()
+        self.tab_buttons_widget = self.create_tab_buttons(wallet1, username)
 
         # Add banner and tab buttons to the layout
         main_layout.addWidget(self.banner_widget)
@@ -116,14 +152,15 @@ class General1(QMainWindow):
         banner_layout.addWidget(banner)
         return banner_widget
 
-    
-    def create_tab_buttons(self):
+    def create_tab_buttons(self, wallet1, username):
         """Creates tab buttons widget."""
         tab_buttons_widget = QWidget()
         tab_buttons_layout = QHBoxLayout(tab_buttons_widget)
         tab_buttons_layout.setContentsMargins(0, 0, 0, 0)
         tab_buttons_layout.setSpacing(0)
 
+        #use cursor hon
+        # 
         # Tab buttons
         for i, page in enumerate(["Home", "Create a Product", "Chat", "Profile", "Wallet"]):  # Added "Chat" tab
             btn = QPushButton(page)
@@ -144,18 +181,21 @@ class General1(QMainWindow):
                     background-color: #34495e;
                 }
             """)
-            btn.clicked.connect(self.on_tab_button_click)
+            
+            btn.clicked.connect(lambda checked, wallet = wallet1: self.on_tab_button_click(wallet, username))
             tab_buttons_layout.addWidget(btn)
 
         tab_buttons_widget.setStyleSheet("background-color: #34495e;")  # Tab buttons background
         return tab_buttons_widget
 
 
-    def on_tab_button_click(self):
+    def on_tab_button_click(self, wallet1, username):
         """Handles the tab button click event."""
         sender = self.sender()
         if sender.text() == "Home":
             self.stacked_widget.setCurrentIndex(0)
+            print("ENTERING HOME")
+            products = client.populateProductsArray()
             self.banner_widget.show()
         elif sender.text() == "Create a Product":
             self.stacked_widget.setCurrentIndex(1)
@@ -168,7 +208,7 @@ class General1(QMainWindow):
             self.banner_widget.hide()  # Hide the banner when switching to Profile
         elif sender.text() == "Wallet":
             self.stacked_widget.setCurrentIndex(4)
-            self.show_wallet_dialog()
+            self.show_wallet_dialog(wallet1, username)
 
     def create_tab_content(self, username, password):
         """Creates the content for each tab."""
@@ -187,6 +227,38 @@ class General1(QMainWindow):
         search_bar = QLineEdit()
         search_bar.setPlaceholderText("Search products...")
         search_bar.textChanged.connect(self.filter_products)
+        
+        search_bar.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                border-radius: 15px;
+                background-color: #f0f0f0;
+                border: 2px solid #ccc;
+                font-size: 16px;
+                color: #333;
+            }
+            
+            QLineEdit:focus {
+                border: 2px solid #4CAF50; /* Green border on focus */
+                background-color: #fff;
+            }
+            
+            QLineEdit::placeholder {
+                color: #888;
+                font-style: italic;
+            }
+            
+            QLineEdit::clear-button {
+                background-color: transparent;
+                border: none;
+                width: 16px;
+                height: 16px;
+            }
+            
+            QLineEdit::clear-button:hover {
+                background-color: #ddd;
+            }
+        """)
         
         home_layout.addWidget(search_bar, 0, 0, 1, 4)  # Span the search bar across all columns
 
@@ -245,14 +317,16 @@ class General1(QMainWindow):
             # Keep track of the product widget for removal later
             self.product_widgets.append(product_widget)
             
-    def show_wallet_dialog(self):
+    def show_wallet_dialog(self, wallet1, username):
         """Show a dialog with the wallet details and allow adding money."""
         dialog = QDialog(self)
         dialog.setWindowTitle("Wallet Details")
         dialog.setGeometry(100, 100, 300, 200)  # Increase height for new content
         layout = QVBoxLayout()
-
+        
         # Display the current wallet balance
+        cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
+        wallet1 = cursor.fetchone()[0]
         wallet_label = QLabel(f"Your balance: {wallet1} USD", dialog)
         layout.addWidget(wallet_label)
 
@@ -275,12 +349,13 @@ class General1(QMainWindow):
         layout.addWidget(button_box)
 
         # Connect the Add Money button to a method that updates the wallet
-        def on_add_money():
+        def on_add_money(wallet1, username):
             try:
                 amount = float(add_money_input.text())  # Get the input amount
                 if amount > 0:
-                    global wallet1
-                    wallet1 += amount  # Add the money to the wallet
+                    wallet1 += amount  # Add the money to the wallet          db.commit()
+                    cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (wallet1, username))
+                    db.commit()
                     wallet_label.setText(f"Your balance: {wallet1} USD")  # Update the wallet balance display
                     add_money_input.clear()  # Clear the input field
                 else:
@@ -288,7 +363,8 @@ class General1(QMainWindow):
             except ValueError:
                 wallet_label.setText("Invalid amount. Please enter a number.")  # Handle invalid input
 
-        add_money_button.clicked.connect(on_add_money)
+        add_money_button.clicked.connect(lambda checked, wallet = wallet1: on_add_money(wallet1, username))
+        
 
         dialog.setLayout(layout)
         dialog.exec_()

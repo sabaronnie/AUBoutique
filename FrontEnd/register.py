@@ -215,8 +215,8 @@ class RegisterWindow(QMainWindow):
         Submit.clicked.connect(lambda: self.validate_inputs(fullname, email, username, password, confirmPassword))
         
         
-    def openMainMenu(self):
-        self.mainmenu = General1()   
+    def openMainMenu(self, username, password):
+        self.mainmenu = General1(username, password)   
         self.mainmenu.show()
         
     
@@ -272,13 +272,13 @@ class RegisterWindow(QMainWindow):
             print("flyer2")
             
             notifications.getInfoNotification("Creating Your Account...", "", self)
-            QTimer.singleShot(2000, lambda: self.finalize_account_creation())
+            QTimer.singleShot(2000, lambda: self.finalize_account_creation(username.text(), password.text()))
 
-    def finalize_account_creation(self):
+    def finalize_account_creation(self, username, password):
         notifications.getInfoNotification("Finalizing Details...", "", self)
 
         # Use QTimer for the second delay
-        QTimer.singleShot(5000, lambda: self.openMainMenu())
+        QTimer.singleShot(5000, lambda: self.openMainMenu(username, password))
             # QMessageBox.information(self, "Success", "Registration successful!")
                 #need to open a new page here.
 

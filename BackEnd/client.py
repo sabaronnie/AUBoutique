@@ -13,7 +13,8 @@ import io
 import queue
 import select
 import requests
-import json
+import json  
+from .BackEndSignal import signals
 #yalla btjarib l 2 clients?
 
 #TODO: viewing ur own buyers
@@ -82,6 +83,7 @@ def receiveThread():
     global socketList
     buffer = b"" 
     remaining = b""
+    count=0
     while True:
         readable, _, _ = select.select(socketList, [], [])
             #remaining = client.recv(1024)
@@ -92,7 +94,10 @@ def receiveThread():
                 remaining += sock.recv(1024)
             
             while remaining:
-                print("while remaining")
+                if count<15:
+                    print(remaining)
+                    print("while remaining")
+                count+=1
                 #receive, remaining = remaining.split(ending, 1)
                 # Using split and handling cases where the result has one element or two
                 split_result = remaining.split(ending, 1)
@@ -111,6 +116,12 @@ def receiveThread():
                 header, ptype, data = receive.split(delimiter, 2)
                 header = header.decode('utf-8')
                 ptype = ptype.decode()
+                
+                if count<15:
+                    print("SUSHIA")
+                    print(header)
+                    print(ptype)
+                    print(data)
                 #print(header)
                 if ptype == "str":
                     data=data.decode('utf-8')
@@ -133,7 +144,7 @@ def receiveThread():
                     imageProductQueue_R.put(data)
                 elif header == "LOG_OUT":
                     LogoutQueue_R.put(data)
-                elif header == "SEND_PRODUCTS":
+                elif header == "SEND_PRODUCTS": 
                     ListProductsQueue_R.put(data)
                 elif header=="GET_ONLINE":
                     getOnlineQueue_R.put(data)
@@ -196,6 +207,7 @@ sendingThread.start()
 def sendImageFile(filename):
     while True:
         file1 = open(filename, "rb")
+        
         for line in file1:
             client.sendall(line)
         client.sendall(b"END")
@@ -431,18 +443,13 @@ def priceValidate(price):
     if float(price) < MIN_PRICE:
         raise ValueError("Less than 1") 
     
-def add_product():
+def add_product(product_name, price, description, filename):
     header = "ADD_PRODUCT"
     sendingQueue.put(("FIRST", "ADD_PRODUCT"))
     print(addProductQueue_R.get())
     while True:
         try: 
-            product_name = input("Product name: ")
-            price = input("Price: ")
-            priceValidate(price)
-            description = input("Description: ")
-            filename = input("Enter the filename of the picture: ")
-            currency = input("Currency (e.g., USD, LBP): ")
+            currency = "USD"
 
             sendingQueue.put((header, f"{product_name},{price},{description},{filename},{currency}"))
             response = addProductQueue_R.get()
@@ -524,35 +531,45 @@ def convert(changeThisCurrency,toThisCurrency,amount):
         print("Error:", response.status_code, response.text)
 
 
-def populateProductsArray(selected_currency="USD"):
-    returnedArray = []
-    header = "SEND_PRODUCTS"
-    sendingQueue.put(("FIRST", "SEND_PRODUCTS"))
-    n = int(ListProductsQueue_R.get())
+# cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+# db.commit()
 
-    for i in range(n):
-        temporary = ListProductsQueue_R.get()
-        temporary = json.loads(temporary)
-        for j in range(len(temporary)):
-            product_currency = temporary[9]  # Assuming currency is at index 9
-            price = float(temporary[5])
-            if product_currency != selected_currency:
-                price = convert(product_currency, selected_currency, price)
-            returnedArray.append(
-                {
-                    "owner": temporary[0],
-                    "name": temporary[1],
-                    "quantity": temporary[2],
-                    "rating": temporary[3],
-                    "numberOfRatings": temporary[4],
-                    "price": price,
-                    "description": temporary[6],
-                    "filename": temporary[7],
-                    "status": temporary[8],
-                    "currency": selected_currency
-                }
-            )
-    return returnedArray
+def populateProductsArray(selected_currency="USD"):
+    try:
+        returnedArray = []
+        header = "SEND_PRODUCTS"
+        sendingQueue.put(("FIRST", "SEND_PRODUCTS"))
+        n = int(ListProductsQueue_R.get())
+
+        for i in range(n):
+            temporary = ListProductsQueue_R.get()
+            temporary = json.loads(temporary)
+            for j in range(len(temporary)):
+                product_currency = temporary[9]  # Assuming currency is at index 9
+                price = float(temporary[5])
+                if product_currency != selected_currency:
+                    price = convert(product_currency, "LBP", price)
+                returnedArray.append(
+                    {
+                        "owner": temporary[0],
+                        "name": temporary[1],
+                        "quantity": temporary[2],
+                        "rating": temporary[3],
+                        "numberOfRatings": temporary[4],
+                        "price": price,
+                        "description": temporary[6],
+                        "filename": temporary[7],
+                        "status": temporary[8],
+                        "currency": selected_currency
+                    }
+                )
+        print(returnedArray)
+        return returnedArray
+    except Exception as e:
+        # Catch all types of exceptions and print the error name and message
+        print(f"An error occurred: {type(e).__name__}")
+        print(f"Error message: {e}")
+        
 
 
 
@@ -690,7 +707,9 @@ def sendChatClient(msgSocket, username, target, msgtype, message):
     #     #client.sendall("EXIT_CHAT".encode('utf-8'))
     #     break
         #print(f"You: {message}")
+        
     if msgtype == "TEXT":
+        print("ANA AAM BHAWEL EBAAT THIS NOW: ")
         info = msgtype.encode() + delimiter + username.encode() + delimiter + f"{message}".encode() + ending
         msgSocket.send(info)
     elif msgtype =="IMG":
@@ -714,7 +733,7 @@ def popFromTheMSGQueue():
 #     global receivedMSG
 
 
-def receiveChatAVAILABLE(username, target, message):
+def receiveChatAVAILABLE(username, target, message, signals):
     global receivedMSG
     header = "SEND_CHAT"
     print("OK FA RECEIVE CHAT WAS CALLED SHAWARMA")
@@ -735,7 +754,8 @@ def receiveChatAVAILABLE(username, target, message):
         cursor.execute("INSERT INTO History values(?,?,?, ?)", (username, target, "TEXT", response))   
         msgHistoryDB.commit()
         
-    receivedMSG.put(message)
+    signals.new_message.emit(message)
+    #receivedMSG.put(message)
     print("THIS IS THE MESSAGE WE'RE MEANT TO RECEIVED")
     print(f"{target}: {response}")
 
@@ -743,6 +763,12 @@ inChat = {}
 
 def addToInChat(target):
     inChat[target] = True
+    
+def checkIfIMinChatOF(target):
+    if target in inChat:
+        return True
+    else:
+        return False
 
 def notification(username):
     ##GUI BASED
@@ -752,7 +778,10 @@ def notification(username):
 #     inChat[target]=True
     
 
+from PyQt5.QtCore import QObject, pyqtSignal
 
+class BackendSignals(QObject):
+    new_message = pyqtSignal(str) 
 #if offlinec but then becomes online TODO
 #operating in its own thread
 def constantlylistenforMessages(username):
@@ -781,7 +810,8 @@ def constantlylistenforMessages(username):
             if not remaining:
                 remaining += connection.recv(1024)
                 if count < 15:
-                    print("successly received shi farrouj")
+                    print("REMAINING, NOW: ")
+                    print(remaining)
             else:
                 if count< 15:
                     print("The REMAINING")
@@ -813,6 +843,8 @@ def constantlylistenforMessages(username):
                     
                 #temp
                 message=message.decode()
+                if count < 15:
+                    print("L MSG AAM BEBAAT: " + message)
             # else: 
             #target,msgToHandle = connection.recv(1024).decode().split(",") #constListenMSGQueue_R.get().split(",")
                 # if message == "EXIT_CHAT":
@@ -820,7 +852,7 @@ def constantlylistenforMessages(username):
                 if target in inChat:
                     print("IBNEEE, ANA IN CHAT OF TARGET")
                     #call send and receive
-                    receiveChatAVAILABLE(username, target, message) #fix input
+                    receiveChatAVAILABLE(username, target, message, signals) #fix input
                 else: #if not in chat
                     print(username)
                     print(target)
@@ -846,14 +878,11 @@ msgHistoryDB.commit()
 def getExistingChats(username):
     print("USERNAME: ", str(username))
     cursor.execute("SELECT DISTINCT destination FROM History WHERE source=?", (username,))
-    listofUsers1 = cursor.fetchall()
-    print("PRINTING USERS ONE")
-    print(listofUsers1)
+    listofUsers1 = [user[0] for user in cursor.fetchall()]
+
     cursor.execute("SELECT DISTINCT source FROM History WHERE destination=? ", (username, ))
-    listofUsers2 = cursor.fetchall()
+    listofUsers2 = [user[0] for user in cursor.fetchall()]
     
-    print("PRINTING USERS 2")
-    print(listofUsers2)
     merged_list = list(set(listofUsers1 + listofUsers2))
     return merged_list
 
