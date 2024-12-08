@@ -50,7 +50,7 @@ cursor = db.cursor()
 
 
 
-cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, username TEXT PRIMARY KEY UNIQUE, password TEXT, balance REAL)") #name, email address, username, and password.
+cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, username TEXT PRIMARY KEY UNIQUE, password TEXT, balance REAL, currency TEXT)") #name, email address, username, and password.
 db.commit()
 # ONLINE LIST OF USERS
 # contains IP and Port
@@ -123,67 +123,85 @@ def receiveThread(connection):
     delimiter = b"BRK"
     remaining = b""
     try:
+        count = 0
         while True:
+                        
+            remaining += connection.recv(1024)
+                    
+            while remaining:
+                if count<15:
+                    print(remaining)
+                    print("while remaining")
+                count+=1
+                #receive, remaining = remaining.split(ending, 1)
+                # Using split and handling cases where the result has one element or two
+                split_result = remaining.split(ending, 1)
+                
+                print("toule= " + str(len(split_result)))
+                if len(split_result) == 1: #if there was no ending
+                    break
+                # If split_result has more than one part, unpack it
+                elif len(split_result) == 2:
+                    receive, remaining = split_result
             
-            if not remaining:
-                remaining = connection.recv(1024)
-            print(remaining)
-            receive, remaining = remaining.split(ending, 1)
-            
-            print("part 1:")
-            print(receive)
-            print("part 2:")
-            print(remaining)
-            
-            header, ptype, data = receive.split(delimiter, 2)
-            header = header.decode('utf-8')
-            ptype = ptype.decode('utf-8')
-            print("header: ")
-            print(header)
-            print("ptype: ")
-            print(ptype)
-            if ptype == "str":
-                data=data.decode('utf-8')
-                print(data)
-            
-            if header == "MSG":
-                userQueues[connection]['messageQueue_R'].put(data)
-            # elif header == "REGISTER" or header == "LOGIN" or header=="AUTH":
-            #     authQueue_R.put(data.decode('utf-8'))
-            elif header == "REGISTER":
-                userQueues[connection]['registerQueue_R'].put(data)
-            elif header == "LOGIN":
-                #userQueues[connection]['loginQueue_R'].put(data)
-                userQueues[connection]['loginQueue_R'].put(data)
-            elif header == "AUTH":
-                #userQueues[connection]['authQueue_R'].put(data)
-                userQueues[connection]['authQueue_R'].put(data)
-            elif header == "ADD_PRODUCT":
-                userQueues[connection]['addProductQueue_R'].put(data)
-            elif header == "IMG_PRODUCT":
-                userQueues[connection]['imageProductQueue_R'].put(data)
-            elif header == "LOG_OUT":
-                userQueues[connection]['LogoutQueue_R'].put(data)
-            elif header == "SEND_PRODUCTS":
-                userQueues[connection]['ListProductsQueue_R'].put(data)
-            elif header=="GET_ONLINE":
-                userQueues[connection]['getOnlineQueue_R'].put(data)
-            elif header=="SEND_CHAT":
-                userQueues[connection]['sendChatQueue_R'].put(data)
-            elif header=="RECV_CHAT":
-                userQueues[connection]['recvChatQueue_R'].put(data)
-            elif header=="HNDLE_MSG":
-                userQueues[connection]['handleMSGQueue_R'].put(data)
-            elif header=="BUY":
-                userQueues[connection]['buyQueue_R'].put(data)
-            elif header=="viewUProduct":
-                userQueues[connection]['viewUserProductQueue_R'].put(data)
-            elif header=="viewBuyers":
-                userQueues[connection]['viewBuyersQueue_R'].put(data)
-            elif header== "FIRST":
-                userQueues[connection]["FirstQueue_R"].put(data)
-    except:
-         print("Connection was closedd")
+                header, ptype, data = receive.split(delimiter, 2)
+                header = header.decode('utf-8')
+                ptype = ptype.decode('utf-8')
+                print("header: ")
+                print(header)
+                print("ptype: ")
+                print(ptype)
+                if ptype == "str":
+                    data=data.decode('utf-8')
+                    print(data)
+                elif ptype == "json":
+                    data = data.decode()
+                    data = json.loads(data)
+                    #data = data.decode()
+                
+                if header == "MSG":
+                    userQueues[connection]['messageQueue_R'].put(data)
+                # elif header == "REGISTER" or header == "LOGIN" or header=="AUTH":
+                #     authQueue_R.put(data.decode('utf-8'))
+                elif header == "REGISTER":
+                    userQueues[connection]['registerQueue_R'].put(data)
+                elif header == "LOGIN":
+                    #userQueues[connection]['loginQueue_R'].put(data)
+                    userQueues[connection]['loginQueue_R'].put(data)
+                elif header == "AUTH":
+                    #userQueues[connection]['authQueue_R'].put(data)
+                    userQueues[connection]['authQueue_R'].put(data)
+                elif header == "ADD_PRODUCT":
+                    userQueues[connection]['addProductQueue_R'].put(data)
+                elif header == "IMG_PRODUCT":
+                    userQueues[connection]['imageProductQueue_R'].put(data)
+                elif header == "LOG_OUT":
+                    userQueues[connection]['LogoutQueue_R'].put(data)
+                elif header == "SEND_PRODUCTS":
+                    userQueues[connection]['ListProductsQueue_R'].put(data)
+                elif header=="GET_ONLINE":
+                    userQueues[connection]['getOnlineQueue_R'].put(data)
+                elif header=="SEND_CHAT":
+                    userQueues[connection]['sendChatQueue_R'].put(data)
+                elif header=="RECV_CHAT":
+                    userQueues[connection]['recvChatQueue_R'].put(data)
+                elif header=="HNDLE_MSG":
+                    userQueues[connection]['handleMSGQueue_R'].put(data)
+                elif header=="BUY":
+                    userQueues[connection]['buyQueue_R'].put(data)
+                elif header=="viewUProduct":
+                    userQueues[connection]['viewUserProductQueue_R'].put(data)
+                elif header=="viewBuyers":
+                    userQueues[connection]['viewBuyersQueue_R'].put(data)
+                elif header== "FIRST":
+                    userQueues[connection]["FirstQueue_R"].put(data)
+                elif header== "SET_NEW_BALANCE":
+                    userQueues[connection]['setNewProductQueue_R'].put(data)
+                elif header == "GET_USER_CURRENCY":
+                    userQueues[connection]['getUserCurrencyQueue_R'].put(data)
+    except Exception as e:
+        print(e)
+        print("Connection was closedd")
             
 #sendingQueue = queue()
 def sendThread(connection):
@@ -197,6 +215,10 @@ def sendThread(connection):
         ptype = ""
         if isinstance(data, str):
             ptype = "str" 
+            data = data.encode()
+        elif isinstance(data, dict):
+            ptype = "json"
+            data = json.dumps(data)
             data = data.encode()
         else:
             ptype = "other"
@@ -218,16 +240,15 @@ def sendThread(connection):
         # data = userQueues[connection]['sendingQueue'].get()[1]
         # connection.sendall(data) 
 
-def receiveImageFile(connection):
-    f = open("Image", "wb")
-    fileData = b""
-    while True:
-        if fileData[-5:] == b"<END>":
-            break
-        data=userQueues[connection]['imageProductQueue_R'].get()
-        #data = connection.recv(1024)
-        fileData+=data
-    f.write(fileData[:-5])
+
+    # fileData = b""
+    # while True:
+    #     if fileData[-5:] == b"<END>":
+    #         break
+    #     data=userQueues[connection]['imageProductQueue_R'].get()
+    #     #data = connection.recv(1024)
+    #     fileData+=data
+    # f.write(fileData[:-5])
     
     
 
@@ -341,7 +362,7 @@ def authentication(connection, address, cursor, db):
             print(username)
             print(password)
             
-            cursor.execute("INSERT INTO Users values(?, ?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password, 20))
+            cursor.execute("INSERT INTO Users values(?, ?, ?, ?, ?, ?)", (name.lower(), email.lower(), username.lower(), password, 20, "USD"))
             db.commit()
             
             print("COMMITED W NOW SENDING ACCOUNT CREATED")
@@ -409,7 +430,7 @@ def picture(connection, db):
 import json
 
 def sendProducts(connection, db):
-    
+    selected_currency = "USD"
     header= "SEND_PRODUCTS"
     db2 = sqlite3.connect('db.AUBoutique')
     cursor = db2.cursor()
@@ -417,6 +438,7 @@ def sendProducts(connection, db):
     cursor.execute("SELECT * FROM Products WHERE status=1")
     productsByUser = cursor.fetchall()
     userQueues[connection]['sendingQueue'].put((header, str(len(productsByUser))))
+    
     for i in range(len(productsByUser)):
         print("pp")
         print(productsByUser[i])
@@ -425,7 +447,26 @@ def sendProducts(connection, db):
         print("JSON:")
         print(test)
 
-
+cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, product TEXT, price INT, FOREIGN KEY(owner) REFERENCES Users(username),  FOREIGN KEY(buyer) REFERENCES Users(username))") 
+db.commit()
+def sendPurchasedProducts(connection):
+    selected_currency = "USD"
+    header= "SEND_PRODUCTS"
+    db2 = sqlite3.connect('db.AUBoutique')
+    cursor = db2.cursor()
+    
+    username = userQueues[connection]['ListProductsQueue_R'].get()
+    cursor.execute("SELECT * FROM Purchases WHERE buyer=?", (username,))
+    productsByUser = cursor.fetchall()
+    userQueues[connection]['sendingQueue'].put((header, str(len(productsByUser))))
+    
+    for i in range(len(productsByUser)):
+        print("pp")
+        print(productsByUser[i])
+        test = json.dumps(productsByUser[i])
+        userQueues[connection]['sendingQueue'].put((header, test))
+        print("JSON:")
+        print(test)
 #"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 def sendUsersProducts(connection, db):
@@ -611,37 +652,64 @@ def logOutUser(connection, username, cursor, db):
       
      #connection.sendall("LOGOUT_SUCCESS".encode('utf-8'))
            
+           
+def receiveImageFile(connection):
+    db=sqlite3.connect('db.AUBoutique')
+    cursor=db.cursor()
+    image_name = userQueues[connection]['imageProductQueue_R'].get()
+    
+    image_data = userQueues[connection]['imageProductQueue_R'].get()
+    f = open("AUBoutique/BackEnd/ServerFiles/"+image_name, "wb")
+    f.write(image_data)
+    
+    f.close()
+    
+def sendImageFile(connection):
+    header = "IMG_PRODUCT"
+    db=sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
+    product_name = userQueues[connection]['imageProductQueue_R'].get()
+    username = userQueues[connection]['imageProductQueue_R'].get()
+    
+    cursor.execute("SELECT filename FROM Products WHERE username=? AND product_name=?", (username, product_name))
+    filepath = cursor.fetchone()[0]
+    
+    f = open(filepath, "rb")
+    file_content = f.read()
+    userQueues[connection]["sendingQueue"].put((header, file_content))
+
 #Handle add product
 def add_product(connection, username,cursor,  db):
     header = "ADD_PRODUCT"
     userQueues[connection]['sendingQueue'].put((header, "opened"))
     #connection.sendall("Opened add products now.".encode('utf-8'))
-    while True:
-            product_name, price, description, filename, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
-            #implement when doing gui
-            quantity = 0
-            # product_name, price, description, filename = connection.recv(1024).decode('utf-8').split(",")
-            print(product_name, price, description)
-            print("testing0")
-            # PRICE IS INTEGER, FIX IT LATER
-            price = int(price)
-            #cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?, ?)", (username, product_name, price, description, filename))
-            cursor.execute("""
-                INSERT INTO Products (username, product_name, quantity, price, desc, filename, currency)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (username, product_name, quantity, price, description, filename, currency))
+    product_name, quantity, price, description, filepath, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
+    #implement when doing gui
+    quantity = 0
+    
+    file_name = os.path.basename(filepath)
+    server_file_path = "AUBoutique/BackEnd/ServerFiles/" + file_name 
+    # product_name, price, description, filename = connection.recv(1024).decode('utf-8').split(",")
+    print(product_name, price, description)
+    print("testing0")
+    # PRICE IS INTEGER, FIX IT LATER
+    price = int(price)
 
-            print("testing1")
-            db.commit()
-            print("testing2")
-            cursor.execute("SELECT * FROM Products WHERE product_name = ?", (product_name,))
-            print(cursor.fetchall())
-            print("testing3")
-            # Fetch all results
-            #sendProducts(connection, db)
-            userQueues[connection]['sendingQueue'].put((header, "PRODUCT_ADDED"))
+# cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+# db.commit()
+    #cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?, ?)", (username, product_name, price, description, filename))
+    cursor.execute("""
+        INSERT INTO Products (username, product_name, quantity, price, currency, desc, filename)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (username, product_name, quantity, price, currency, description, server_file_path))
+    db.commit()
+
+    # Fetch all results
+    #sendProducts(connection, db)
+    userQueues[connection]['sendingQueue'].put((header, "PRODUCT_ADDED"))
+    receiveImageFile(connection)
             #connection.sendall("PRODUCT_ADDED".encode('utf-8'))
-            break
+            
 
         #except Exception as e:
             #connection.sendall("ERROR: Cannot ADD product".encode('utf-8'))
@@ -665,9 +733,30 @@ def view_buyers(connection, username, db):
         userQueues[connection]['viewBuyersQueue_R'].get()
         #connection.recv(1024)
         
-     
+def sendCurrentBalance(connection, cursor, username):
+    cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
+    wallet1 = cursor.fetchone()[0]
+    
+    userQueues[connection]["sendingQueue"].put(("GET_CURRENT_BALANCE", str(wallet1 )))
 
+def setNewBalance(username):
+    db = sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
+    new_balance = userQueues[connection]["setNewProductQueue_R"].get()
+    cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (new_balance, username))
+    db.commit()
+    userQueues[connection]["sendingQueue"].put(("GET_CURRENT_BALANCE", "OK"))
+    #
 
+    
+def sendUserCurrency(connection):
+    username = userQueues[connection]['getUserCurrencyQueue_R'].get()
+    db = sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
+    cursor.execute("SELECT currency FROM Users WHERE username =? ", (username,))
+    currency = cursor.fetchone()[0]
+    userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency))
+    
 def handle_client(connection, address):
     
     theQueues = {
@@ -687,7 +776,9 @@ def handle_client(connection, address):
         'viewBuyersQueue_R' : queue.Queue(), # viewBuyers
         'sendingQueue':queue.Queue(),
         'FirstQueue_R': queue.Queue(),
-        'sendTargetContact_R' : queue.Queue() #targetDetails
+        'sendTargetContact_R' : queue.Queue(), #targetDetails
+        'setNewProductQueue_R': queue.Queue(),
+        'getUserCurrencyQueue_R': queue.Queue()
     }
     
     userQueues[connection] = theQueues
@@ -743,7 +834,16 @@ def handle_client(connection, address):
             elif option=="GETALLUSERS":
                 print("ANA AAM BFUT HALLAE")
                 getAllUsers(cursor)
-                
+            elif option == "GET_CURRENT_BALANCE":
+                sendCurrentBalance(connection, cursor, username)
+            elif option == "SET_NEW_BALANCE":
+                setNewBalance(username)
+            elif option == "GET_USER_CURRENCY":
+                sendUserCurrency(connection)
+            elif option =="SEND_PRODUCT_IMAGE":
+                sendImageFile(connection)
+            elif option=="SEND_PURCHASED_PRODUCTS":
+                sendPurchasedProducts(connection)
             #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
 server.listen()

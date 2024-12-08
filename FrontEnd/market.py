@@ -11,15 +11,17 @@ wallet1 = 100
 # Sample product data
 # def getAllProducts():
     
-products = [
-    {"name": "Green Apple from Batroun, Lebanon.", "price": "$10", "description": "A great product from the lush orchards of Lebanon.","rating": 0, "owner": "Owner 1", "numberOfRatings" : 0},
-    {"name": "Premium Red Grapes", "price": "$15", "description": "Sweet and fresh red grapes.","rating": 0, "owner": "Owner 2", "numberOfRatings" : 0},
-    {"name": "Golden Pears", "price": "$12", "description": "Crisp and juicy golden pears.","rating": 0, "owner": "Owner 3", "numberOfRatings" : 0},
-    {"name": "Exotic Mango", "price": "$20", "description": "Fresh tropical mangoes.", "rating": 0,"owner": "Owner 4", "numberOfRatings" : 0},
-    {"name": "Fresh Blueberries", "price": "$18", "description": "Organic blueberries.","rating": 0, "owner": "Owner 5", "numberOfRatings" : 0},
-    {"name": "Ripe Strawberries", "price": "$22", "description": "Sweet and delicious strawberries.","rating": 0, "owner": "Owner 6", "numberOfRatings" : 0},
-]
+# products = [
+#     {"name": "Green Apple from Batroun, Lebanon.", "price": "$10", "description": "A great product from the lush orchards of Lebanon.","rating": 0, "owner": "Owner 1", "numberOfRatings" : 0},
+#     {"name": "Premium Red Grapes", "price": "$15", "description": "Sweet and fresh red grapes.","rating": 0, "owner": "Owner 2", "numberOfRatings" : 0},
+#     {"name": "Golden Pears", "price": "$12", "description": "Crisp and juicy golden pears.","rating": 0, "owner": "Owner 3", "numberOfRatings" : 0},
+#     {"name": "Exotic Mango", "price": "$20", "description": "Fresh tropical mangoes.", "rating": 0,"owner": "Owner 4", "numberOfRatings" : 0},
+#     {"name": "Fresh Blueberries", "price": "$18", "description": "Organic blueberries.","rating": 0, "owner": "Owner 5", "numberOfRatings" : 0},
+#     {"name": "Ripe Strawberries", "price": "$22", "description": "Sweet and delicious strawberries.","rating": 0, "owner": "Owner 6", "numberOfRatings" : 0},
+# ]
 
+# products = client.populateProductsArray()
+# products = []
 # Function to filter products based on search query
 def filter_products(query):
     filtered = []
@@ -27,6 +29,8 @@ def filter_products(query):
         if query.lower() in product["name"].lower() or query.lower() in product["description"].lower():
             filtered.append(product)
     return filtered
+
+
 
 # Function to rate a product
 def rate(star_butts, rating_label, updatedrating, rating, product):

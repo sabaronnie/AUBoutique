@@ -12,14 +12,15 @@ import PyQt5.QtGui as qtg
 from PyQt5.QtGui import QIcon, QFont, QPixmap
 from PyQt5.QtCore import Qt 
 
+
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, username):
         super().__init__()
         self.setGeometry(0, 0, 700, 500)
         self.setMinimumSize(700, 500)
-        self.initUI()
+        self.initUI(username)
 
-    def initUI(self):
+    def initUI(self, username):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         central_widget.setGeometry(700, 245, 500, 500)
@@ -109,9 +110,10 @@ class MainWindow(QMainWindow):
         name_layout.addWidget(nameText)
         name_layout.addWidget(name)
 
+        currency = client.getUserCurrency(username)
         # Make sure all fields have the same width
         price_layout = QFormLayout()
-        priceText = QLabel("Price")
+        priceText = QLabel(f"Price (in {currency})")
         priceText.setStyleSheet("color: #99aab5; font-weight: bold;")
         price = QLineEdit()
         price.setFixedSize(245, 30)
@@ -170,6 +172,22 @@ class MainWindow(QMainWindow):
         img_layout.addWidget(imgText)
         img_layout.addWidget(img_upload)
 
+        quantity_layout = QFormLayout()
+        quantityText = QLabel("Quantity")
+        quantityText.setStyleSheet("color: #99aab5; font-weight: bold;")
+        quantity = QLineEdit()
+        quantity.setFixedSize(245, 30)
+        quantity.setStyleSheet("""
+            background-color: #23272a;
+            color: white;
+            padding-left: 10px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+        """)
+        quantity_layout.addWidget(quantityText)
+        quantity_layout.addWidget(quantity)
+
         # Submit button
         submit_layout = QFormLayout()
         Empty = QLabel()
@@ -199,6 +217,7 @@ class MainWindow(QMainWindow):
         form_layout.addLayout(name_layout)
         form_layout.addLayout(price_layout)
         form_layout.addLayout(desc_layout)
+        form_layout.addLayout(quantity_layout)
         form_layout.addLayout(img_layout)
         form_layout.addLayout(submit_layout)
 
@@ -217,18 +236,22 @@ class MainWindow(QMainWindow):
 
         central_widget.setStyleSheet("padding: 0px; margin: 0px;")
         central_widget.setLayout(mainlayout)
-        Submit.clicked.connect(lambda: self.validate_inputs(name.text(), price.text(), desc.text()))
-    def validate_inputs(self, name, price, description):
+        Submit.clicked.connect(lambda: self.validate_inputs(name.text(), price.text(), desc.text(), quantity.text()))
+    def validate_inputs(self, name, price, description, quantity):
         """Validate the inputs for all fields.""" 
         # Check if any of the fields are empty
         if not name or not price or not description:
             self.show_error("Please fill in all the fields.")
             return
         price_value = float(price)  # Use float() to allow decimal values as well
+        quantity_value = float(quantity)
         if price_value < 0:
             self.show_error("Price cannot be negative.")
             return
-        client.add_product(name, price, description, self.imageFile)
+        if quantity_value < 0:
+            self.show_error("Quantity cannot be negative.")
+            return
+        client.add_product(name, quantity, price, description, self.imageFile)
 
     def upload_image(self):
         options = QFileDialog.Options()

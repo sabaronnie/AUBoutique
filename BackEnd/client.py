@@ -70,6 +70,8 @@ viewBuyersQueue_R = queue.Queue() # viewBuyers
 FirstQueue_R = queue.Queue() #First
 constListenMSGQueue_R = queue.Queue()
 sendTargetContact_R = queue.Queue() #targetDetails
+getCurrentBalanceQueue_R = queue.Queue()
+getUserCurrencyQueue_R = queue.Queue()
 
 #getAllUsers
 
@@ -80,112 +82,128 @@ ending = b"<END>"
 def receiveThread():
     global delimiter
     global ending
-    global socketList
     buffer = b"" 
     remaining = b""
     count=0
     while True:
-        readable, _, _ = select.select(socketList, [], [])
-            #remaining = client.recv(1024)
         
-        for sock in readable:
+        remaining += client.recv(1024)
+        
+        while remaining:
+            if count<15:
+                print(remaining)
+                print("while remaining")
+            count+=1
+            #receive, remaining = remaining.split(ending, 1)
+            # Using split and handling cases where the result has one element or two
+            split_result = remaining.split(ending, 1)
             
-            if not remaining:
-                remaining += sock.recv(1024)
+            print("toule= " + str(len(split_result)))
+            if len(split_result) == 1: #if there was no ending
+                break
+            # If split_result has more than one part, unpack it
+            elif len(split_result) == 2:
+                receive, remaining = split_result
+            # else:
+            #     # Handle the case where there is only one part
+            #     receive = split_result[0]
+            #     remaining = b""
+        
+            # print(receive)
+            print("BABABAABBA")
+            header, ptype, data = receive.split(delimiter, 2)
+            header = header.decode('utf-8')
+            ptype = ptype.decode()
             
-            while remaining:
-                if count<15:
-                    print(remaining)
-                    print("while remaining")
-                count+=1
-                #receive, remaining = remaining.split(ending, 1)
-                # Using split and handling cases where the result has one element or two
-                split_result = remaining.split(ending, 1)
-                if len(split_result) == 1: #if there was no ending
-                    break
-                # If split_result has more than one part, unpack it
-                elif len(split_result) == 2:
-                    receive, remaining = split_result
-                # else:
-                #     # Handle the case where there is only one part
-                #     receive = split_result[0]
-                #     remaining = b""
-            
-                # print(receive)
-                print("BABABAABBA")
-                header, ptype, data = receive.split(delimiter, 2)
-                header = header.decode('utf-8')
-                ptype = ptype.decode()
-                
-                if count<15:
-                    print("SUSHIA")
-                    print(header)
-                    print(ptype)
-                    print(data)
-                #print(header)
-                if ptype == "str":
-                    data=data.decode('utf-8')
-                    print("Data: " + data)
-                
+            if count<15:
+                print("SUSHIA")
                 print(header)
-                if header == "MSG":
-                    messageQueue_R.put(data)
-                elif header == "REGISTER":
-                    registerQueue_R.put(data)
-                elif header == "LOGIN":
-                    #loginQueue_R.put(data)
-                    loginQueue_R.put(data)
-                elif header == "AUTH":
-                    #authQueue_R.put(data)
-                    authQueue_R.put(data)
-                elif header == "ADD_PRODUCT":
-                    addProductQueue_R.put(data)
-                elif header == "IMG_PRODUCT":
-                    imageProductQueue_R.put(data)
-                elif header == "LOG_OUT":
-                    LogoutQueue_R.put(data)
-                elif header == "SEND_PRODUCTS": 
-                    ListProductsQueue_R.put(data)
-                elif header=="GET_ONLINE":
-                    getOnlineQueue_R.put(data)
-                elif header=="SEND_CHAT":
-                    sendChatQueue_R.put(data)
-                elif header=="RECV_CHAT":
-                    recvChatQueue_R.put(data)
-                elif header=="HNDLE_MSG":
-                    handleMSGQueue_R.put(data)
-                elif header=="BUY":
-                    buyQueue_R.put(data)
-                elif header=="viewUProduct":
-                    viewUserProductQueue_R.put(data)
-                elif header=="viewBuyers":
-                    viewBuyersQueue_R.put(data)
-                elif header=="FIRST":
-                    FirstQueue_R.put(data)
-                elif header == "ConstListenMSG": 
-                    constListenMSGQueue_R.put(data)
-                elif header=="targetDetails":
-                    sendTargetContact_R.put(data)
+                print(ptype)
+                print(data)
+            #print(header)
+            if ptype == "str":
+                data=data.decode('utf-8')
+                print("Data: " + data)
+            elif ptype == "json":
+                data = data.decode()
+                data = json.loads(data)
+                #data = data.decode()
+            
+            print(header)
+            if header == "MSG":
+                messageQueue_R.put(data)
+            elif header == "REGISTER":
+                registerQueue_R.put(data)
+            elif header == "LOGIN":
+                #loginQueue_R.put(data)
+                loginQueue_R.put(data)
+            elif header == "AUTH":
+                #authQueue_R.put(data)
+                authQueue_R.put(data)
+            elif header == "ADD_PRODUCT":
+                addProductQueue_R.put(data)
+            elif header == "IMG_PRODUCT":
+                imageProductQueue_R.put(data)
+            elif header == "LOG_OUT":
+                LogoutQueue_R.put(data)
+            elif header == "SEND_PRODUCTS": 
+                ListProductsQueue_R.put(data)
+            elif header=="GET_ONLINE":
+                getOnlineQueue_R.put(data)
+            elif header=="SEND_CHAT":
+                sendChatQueue_R.put(data)
+            elif header=="RECV_CHAT":
+                recvChatQueue_R.put(data)
+            elif header=="HNDLE_MSG":
+                handleMSGQueue_R.put(data)
+            elif header=="BUY":
+                buyQueue_R.put(data)
+            elif header=="viewUProduct":
+                viewUserProductQueue_R.put(data)
+            elif header=="viewBuyers":
+                viewBuyersQueue_R.put(data)
+            elif header=="FIRST":
+                FirstQueue_R.put(data)
+            elif header == "ConstListenMSG": 
+                constListenMSGQueue_R.put(data)
+            elif header=="targetDetails":
+                sendTargetContact_R.put(data)
+            elif header=="GET_CURRENT_BALANCE":
+                getCurrentBalanceQueue_R.put(data)
+            elif header=="GET_USER_CURRENCY":
+                getUserCurrencyQueue_R.put(data)
 
 
 sendingQueue = queue.Queue()
 def sendThread():
     global delimiter
     global ending
+
     print("yi")
     while True:
         #get the prefix
         header, data = sendingQueue.get()
+        print("wzaber khaye")
         print(header)
         print(data)
         #tt = f"{header},{data.decode()}"
         ptype = ""
+
+            
         if isinstance(data, str):
             ptype = "str" 
+            data = data.encode()
+        elif isinstance(data, dict):
+            ptype = "json"
+            data = json.dumps(data)
             data = data.encode()
         else:
             ptype = "other"
         
+        
+        print("PLAN TO SEND THIS")
+        print(ptype)
+        print(data)
         message = header.encode() + delimiter + ptype.encode() + delimiter + data + ending
         
         client.sendall(message)
@@ -443,17 +461,19 @@ def priceValidate(price):
     if float(price) < MIN_PRICE:
         raise ValueError("Less than 1") 
     
-def add_product(product_name, price, description, filename):
+def add_product(product_name, quantity, price, description, file_path):
     header = "ADD_PRODUCT"
     sendingQueue.put(("FIRST", "ADD_PRODUCT"))
     print(addProductQueue_R.get())
     while True:
         try: 
+            
             currency = "USD"
 
-            sendingQueue.put((header, f"{product_name},{price},{description},{filename},{currency}"))
+            sendingQueue.put((header, f"{product_name},{quantity},{price},{description},{file_path},{currency}"))
             response = addProductQueue_R.get()
             if response == "PRODUCT_ADDED":
+                sendProductImage(file_path)
                 return product_name
             else: 
                 print(response)
@@ -462,42 +482,65 @@ def add_product(product_name, price, description, filename):
             print("ERROR: Please only enter a value greater than or equal to 1$.")
     return product_name
 
+def getUserCurrency(username):
+    sendingQueue.put(("FIRST", "GET_USER_CURRENCY"))
+    sendingQueue.put(("GET_USER_CURRENCY", username))
+    user_currency = getUserCurrencyQueue_R.get()
+    return user_currency
 
-
-def image_of_product(client):
-    header = "IMG_PRODUCT"
-    x = sendingQueue.put((header, "VIEW_PICTURE"))
-    #x = client.send("VIEW_PICTURE".encode('utf-8'))
-    ans = imageProductQueue_R.get().decode('utf-8')
-    #ans = client.recv(1024).decode('utf-8')
     
-    if(ans == "No products"):
-        print("\nThere are no products are on the market\n")
-        return
-    try:
-        product=input("Enter the name of the product you would like to view: ")
-        sendingQueue.put((header, product))
-        #client.send(product.encode('utf-8')) 
-        x = imageProductQueue_R.get().decode('utf-8')
-        #x=client.recv(1024).decode('utf-8')
-        
-        while(x=="Invalid product"):
-            product=input("Error: enter the product name again: ")
-            sendingQueue.put((header, product))
-            #client.send(product.encode('utf-8')) 
-            x = imageProductQueue_R.get()
-            # client.send(product.encode())
-            # x=client.recv(1024).decode('utf-8')
+def getProductImage(username, product_name):
+    header = "IMG_PRODUCT"
+    sendingQueue.put(("FIRST", "SEND_PRODUCT_IMAGE"))
+    
+    print("LE USERNAME")
+    
+    sendingQueue.put((header, product_name))
+    sendingQueue.put((header, username))
+    
+    return imageProductQueue_R.get()
 
-        size = int(imageProductQueue_R.get().decode('utf-8'))
-        #size=int(client.recv(1024).decode())
-        data = imageProductQueue_R.get()
-        # COME BACK HERE AND DEFINE THE SIZE SOMEHOW
-        #data=client.recv(size)
-        image = Image.open(io.BytesIO(data))
-        image.show()
-    except Exception as e:
-       print("An error has occured")
+def sendProductImage(filepath):
+    header = "IMG_PRODUCT"
+    #sendingQueue.put((header, "VIEW_PICTURE"))
+    #x = client.send("VIEW_PICTURE".encode('utf-8'))
+    # ans = imageProductQueue_R.get().decode('utf-8')
+    #ans = client.recv(1024).decode('utf-8')
+    file_name = os.path.basename(filepath)
+    sendingQueue.put((header,file_name))
+    f = open(filepath, "rb")
+    file_content = f.read()
+    sendingQueue.put((header, file_content))
+    f.close()
+    
+    
+    # if(ans == "No products"):
+    #     print("\nThere are no products are on the market\n")
+    #     return
+    # try:
+    #     product=input("Enter the name of the product you would like to view: ")
+    #     sendingQueue.put((header, product))
+    #     #client.send(product.encode('utf-8')) 
+    #     x = imageProductQueue_R.get() #.decode('utf-8')
+    #     #x=client.recv(1024).decode('utf-8')
+        
+    #     while(x=="Invalid product"):
+    #         product=input("Error: enter the product name again: ")
+    #         sendingQueue.put((header, product))
+    #         #client.send(product.encode('utf-8')) 
+    #         x = imageProductQueue_R.get()
+    #         # client.send(product.encode())
+    #         # x=client.recv(1024).decode('utf-8')
+
+    #     size = int(imageProductQueue_R.get()) #.decode('utf-8'))
+    #     #size=int(client.recv(1024).decode())
+    #     data = imageProductQueue_R.get()
+    #     # COME BACK HERE AND DEFINE THE SIZE SOMEHOW
+    #     #data=client.recv(size)
+    #     image = Image.open(io.BytesIO(data))
+    #     image.show()
+    # except Exception as e:
+    #    print("An error has occured")
 
 #kind of recursion, do i keep?
 def LogOut():
@@ -541,28 +584,34 @@ def populateProductsArray(selected_currency="USD"):
         sendingQueue.put(("FIRST", "SEND_PRODUCTS"))
         n = int(ListProductsQueue_R.get())
 
+
+#cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+
         for i in range(n):
             temporary = ListProductsQueue_R.get()
+            print("TEMPORARY: " )
+            print(temporary)
             temporary = json.loads(temporary)
-            for j in range(len(temporary)):
-                product_currency = temporary[9]  # Assuming currency is at index 9
-                price = float(temporary[5])
-                if product_currency != selected_currency:
-                    price = convert(product_currency, "LBP", price)
-                returnedArray.append(
-                    {
-                        "owner": temporary[0],
-                        "name": temporary[1],
-                        "quantity": temporary[2],
-                        "rating": temporary[3],
-                        "numberOfRatings": temporary[4],
-                        "price": price,
-                        "description": temporary[6],
-                        "filename": temporary[7],
-                        "status": temporary[8],
-                        "currency": selected_currency
-                    }
-                )
+            print("JSON")
+            print(temporary)
+            product_currency = temporary[6]  # Assuming currency is at index 9
+            price = float(temporary[5])
+            if product_currency != selected_currency:
+                price = convert(product_currency, selected_currency, price)
+            returnedArray.append(
+                {
+                    "owner": temporary[0],
+                    "name": temporary[1],
+                    "quantity": temporary[2],
+                    "rating": temporary[3],
+                    "numberOfRatings": temporary[4],
+                    "price": price,
+                    "description": temporary[7],
+                    "filename": temporary[8],
+                    "status": temporary[9],
+                    "currency": selected_currency
+                }
+            )
         print(returnedArray)
         return returnedArray
     except Exception as e:
@@ -570,7 +619,45 @@ def populateProductsArray(selected_currency="USD"):
         print(f"An error occurred: {type(e).__name__}")
         print(f"Error message: {e}")
         
-
+def purchasedProductsArray(username, selected_currency="USD"):
+    try:
+        returnedArray = []
+        header = "SEND_PRODUCTS"
+        sendingQueue.put(("FIRST", "SEND_PURCHASED_PRODUCTS"))
+        sendingQueue.put((header, username))
+        n = int(ListProductsQueue_R.get())
+        for i in range(n):
+            temporary = ListProductsQueue_R.get()
+            print("TEMPORARY: " )
+            print(temporary)
+            temporary = json.loads(temporary)
+            print("JSON")
+            print(temporary)
+            product_currency = temporary[6]  # Assuming currency is at index 9
+            price = float(temporary[5])
+            if product_currency != selected_currency:
+                price = convert(product_currency, selected_currency, price)
+            returnedArray.append(
+                {
+                    "owner": temporary[0],
+                    "name": temporary[1],
+                    "quantity": temporary[2],
+                    "rating": temporary[3],
+                    "numberOfRatings": temporary[4],
+                    "price": price,
+                    "description": temporary[7],
+                    "filename": temporary[8],
+                    "status": temporary[9],
+                    "currency": selected_currency
+                }
+            )
+        print(returnedArray)
+        return returnedArray
+    except Exception as e:
+        # Catch all types of exceptions and print the error name and message
+        print(f"An error occurred: {type(e).__name__}")
+        print(f"Error message: {e}")
+    
 
 
 # def list_products():
@@ -594,6 +681,17 @@ def populateProductsArray(selected_currency="USD"):
 #     # Print the table
 #     print(table)
 
+def getCurrentBalance():
+    sendingQueue.put(("FIRST", "GET_CURRENT_BALANCE"))
+    current_balance = getCurrentBalanceQueue_R.get()
+    return float(current_balance)
+
+def setNewBalance(new_balance):
+    sendingQueue.put(("FIRST", "SET_NEW_BALANCE"))
+    sendingQueue.put(("SET_NEW_BALANCE", str(new_balance)))
+    status = getCurrentBalanceQueue_R.get()
+    return status
+    
 
     
 def getOnlineUsers():

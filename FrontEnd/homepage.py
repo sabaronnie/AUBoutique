@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import QGridLayout, QApplication, QMainWindow, QScrollArea,
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor
 from PyQt5.QtCore import Qt, QSize
 from .market import show_product_details
+from . import market
 from .chat import MainPage
 from .profile import profileInfo
 from .createproduct import MainWindow
@@ -21,36 +22,9 @@ db = sqlite3.connect('db.AUBoutique')
 db.execute("PRAGMA foreign_keys=on")
 cursor = db.cursor()
 
-products = []
-# products = client.populateProductsArray()
-  # The user's wallet balance
-# def populateProductsArray(selected_currency="USD"):
-#     returnedArray = []
 
-#     cursor.execute("SELECT * FROM Products WHERE status=1")
-#     allTheProducts = cursor.fetchall()
 
-#     for i in range(n):
-#         for j in range(len(temporary)):
-#             product_currency = temporary[9]  # Assuming currency is at index 9
-#             price = float(temporary[5])
-#             if product_currency != selected_currency:
-#                 price = convert(product_currency, selected_currency, price)
-#             returnedArray.append(
-#                 {
-#                     "owner": temporary[0],
-#                     "name": temporary[1],
-#                     "quantity": temporary[2],
-#                     "rating": temporary[3],
-#                     "numberOfRatings": temporary[4],
-#                     "price": price,
-#                     "description": temporary[6],
-#                     "filename": temporary[7],
-#                     "status": temporary[8],
-#                     "currency": selected_currency
-#                 }
-#             )
-#     return returnedArray
+
 
 class General1(QMainWindow):
     def __init__(self, username, password):
@@ -60,11 +34,12 @@ class General1(QMainWindow):
         self.setWindowTitle("AUBoutique")
         cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
         wallet1 = cursor.fetchone()[0]
-        self.initUI(username, password, wallet1)
+        products = client.populateProductsArray()
+        self.initUI(username, password, wallet1, products)
         
 
 
-    def initUI(self, username, password, wallet1):
+    def initUI(self, username, password, wallet1, products):
         # Main widget to hold all content
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
@@ -89,7 +64,7 @@ class General1(QMainWindow):
         main_layout.addWidget(self.stacked_widget)
 
         # Create the content for each tab
-        self.create_tab_content(username, password)
+        self.create_tab_content(username, password, products)
 
         # Create a QScrollArea to make the layout scrollable
         scroll_area = QScrollArea()
@@ -190,12 +165,15 @@ class General1(QMainWindow):
 
 
     def on_tab_button_click(self, wallet1, username):
+       #global products
         """Handles the tab button click event."""
         sender = self.sender()
         if sender.text() == "Home":
             self.stacked_widget.setCurrentIndex(0)
             print("ENTERING HOME")
             products = client.populateProductsArray()
+            print("THIS SHOULD APPEAR")
+            print(products)
             self.banner_widget.show()
         elif sender.text() == "Create a Product":
             self.stacked_widget.setCurrentIndex(1)
@@ -210,7 +188,7 @@ class General1(QMainWindow):
             self.stacked_widget.setCurrentIndex(4)
             self.show_wallet_dialog(wallet1, username)
 
-    def create_tab_content(self, username, password):
+    def create_tab_content(self, username, password, products):
         """Creates the content for each tab."""
         
         # Home tab content
@@ -226,7 +204,7 @@ class General1(QMainWindow):
 
         search_bar = QLineEdit()
         search_bar.setPlaceholderText("Search products...")
-        search_bar.textChanged.connect(self.filter_products)
+        search_bar.textChanged.connect(lambda: self.filter_products(username, products))
         
         search_bar.setStyleSheet("""
             QLineEdit {
@@ -266,11 +244,11 @@ class General1(QMainWindow):
         self.counter = 0  # Counter to keep track of product placement
         
         self.product_widgets = []  # List to store product widgets
-        self.update_product_display(products)  # Initially display all products
+        self.update_product_display(username, products)  # Initially display all products
 
         self.stacked_widget.addWidget(home_container)
         
-        productCreator_widget = MainWindow()
+        productCreator_widget = MainWindow(username)
         self.stacked_widget.addWidget(productCreator_widget)
         # Chat tab content
         chat_widget = MainPage(username, password)  # Use the MainPage class from chat.py
@@ -291,13 +269,13 @@ class General1(QMainWindow):
         wallet_layout.addWidget(QLabel("Your Wallet"))
         wallet_layout.addWidget(QPushButton("Balance: $25 USD"))  # Example wallet balance
         self.stacked_widget.addWidget(wallet_widget)
-    def filter_products(self):
+    def filter_products(self, username, products):
         """Filters products based on the search query."""
         search_text = self.home_layout.itemAtPosition(0, 0).widget().text().lower()  # Get text from search bar
         filtered_products = [product for product in products if search_text in product['name'].lower()]
 
-        self.update_product_display(filtered_products)
-    def update_product_display(self, products):
+        self.update_product_display(username, filtered_products)
+    def update_product_display(self, username, products):
         """Updates the product display based on filtered products."""
         # Remove existing product widgets
         for widget in self.product_widgets:
@@ -309,7 +287,7 @@ class General1(QMainWindow):
         products_per_row = 4
 
         for i, product in enumerate(products):
-            product_widget = self.create_product_widget(product)
+            product_widget = self.create_product_widget(username, product)
             # Calculate the row and column based on the number of products per row
             row, col = divmod(i, products_per_row)
             # Add the product widget to the grid layout
@@ -325,8 +303,9 @@ class General1(QMainWindow):
         layout = QVBoxLayout()
         
         # Display the current wallet balance
-        cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
-        wallet1 = cursor.fetchone()[0]
+        # cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
+        # wallet1 = cursor.fetchone()[0]
+        wallet1 = client.getCurrentBalance()
         wallet_label = QLabel(f"Your balance: {wallet1} USD", dialog)
         layout.addWidget(wallet_label)
 
@@ -354,8 +333,9 @@ class General1(QMainWindow):
                 amount = float(add_money_input.text())  # Get the input amount
                 if amount > 0:
                     wallet1 += amount  # Add the money to the wallet          db.commit()
-                    cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (wallet1, username))
-                    db.commit()
+                    # cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (wallet1, username))
+                    # db.commit()
+                    client.setNewBalance(wallet1)
                     wallet_label.setText(f"Your balance: {wallet1} USD")  # Update the wallet balance display
                     add_money_input.clear()  # Clear the input field
                 else:
@@ -369,15 +349,21 @@ class General1(QMainWindow):
         dialog.setLayout(layout)
         dialog.exec_()
 
-    def create_product_widget(self, product):
+    def create_product_widget(self, username, product):
         """Creates a widget for a single product."""
         product_widget = QWidget()
         product_layout = QVBoxLayout(product_widget)
         product_layout.setSpacing(10)
-
-        # Create the product image button
+        
         product_image = QPushButton()
-        pixmap = QPixmap("bouza.png")
+        image_data = client.getProductImage(product["owner"], product["name"])  # Replace 'image' with your key for image bytes
+        if image_data:
+            pixmap = QPixmap()
+            pixmap.loadFromData(image_data)  # Load image from bytes
+        else:
+            pixmap = QPixmap(150, 150)  # Placeholder pixmap if image data is missing
+            pixmap.fill(Qt.gray)  # Fill with a placeholder color
+        # Create the product image button
         dark_pixmap = pixmap.copy()  # Create a copy of the pixmap for hover effect
 
         # Darken the pixmap for hover effect
@@ -433,6 +419,8 @@ class General1(QMainWindow):
         }
         """)
 
+        #eh eh thats not wrong its blue
+        # laeanno u imported specifically show_product_details enta 
         # Add the product name button to the layout, also centered
         product_layout.addWidget(product_button, alignment=Qt.AlignCenter)
         product_image.clicked.connect(lambda checked, p=product: show_product_details(p))

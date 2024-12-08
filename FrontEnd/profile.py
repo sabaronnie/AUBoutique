@@ -2,10 +2,12 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QScrollArea
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
-
+from ..BackEnd import client
 
 purchasedProducts = [("Cleaner", 4.5, "tony","empty.png"),("Dish", 3, "tony", "empty.png"),("Cleaner", 3.4, "tony","empty.png"),("Cleaner", 4.8, "tony", "empty.png")]
 my_products = [("Ball", "4.5", "/path/to/macbook.jpg"),("Fork", "4.7", "/path/to/iphone.jpg"), ("Water bottle", 3.2, "star.png")]
+
+#purchasedProducts = client.purchasedProductsArray(username, currency)
 
 class UserInfoPanel(QWidget):
     def __init__(self):
