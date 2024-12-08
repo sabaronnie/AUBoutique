@@ -74,9 +74,17 @@ class UserInfoPanel(QWidget):
         self.currency_dropdown.currentTextChanged.connect(self.on_currency_change)
         self.layout.addWidget(self.currency_dropdown)
 
+#ma  aam besmaa shi
+#eh eh
     def on_currency_change(self, currency):
         print(f"Selected currency: {currency}")  # Replace with actual functionality
+        #create aa clientside function that comminucates with the server and changes the currency
+        #we call this function here.
         
+        #eh eh
+        # lek hallae enta bas teshteghil, 3melete a list of all the 
+
+
 
 
 class ProductItem(QFrame):

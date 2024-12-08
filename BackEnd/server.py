@@ -202,7 +202,7 @@ def receiveThread(connection):
     except Exception as e:
         print(e)
         print("Connection was closedd")
-            
+      
 #sendingQueue = queue()
 def sendThread(connection):
     while True:
@@ -681,14 +681,15 @@ def sendImageFile(connection):
 #Handle add product
 def add_product(connection, username,cursor,  db):
     header = "ADD_PRODUCT"
-    userQueues[connection]['sendingQueue'].put((header, "opened"))
+    userQueues[connection]['sendingQueue'].put((header, "opened"))        #eh eh
+        # lek hallae enta bas teshteghil, 3melete a list of all the 
     #connection.sendall("Opened add products now.".encode('utf-8'))
     product_name, quantity, price, description, filepath, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
     #implement when doing gui
     quantity = 0
     
     file_name = os.path.basename(filepath)
-    server_file_path = "AUBoutique/BackEnd/ServerFiles/" + file_name 
+    server_file_path = f"AUBoutique/BackEnd/ServerFiles/{file_name}"  
     # product_name, price, description, filename = connection.recv(1024).decode('utf-8').split(",")
     print(product_name, price, description)
     print("testing0")
