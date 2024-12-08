@@ -3,7 +3,6 @@ import sys
 #sys.path.append("modules") 
 import subprocess
 
-subprocess.run([sys.executable, "-m", "pip", "install", "pyqt5"])
 
 import sys
 from ..BackEnd import client

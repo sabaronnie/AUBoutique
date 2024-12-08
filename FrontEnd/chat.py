@@ -12,6 +12,7 @@ from PyQt5.QtCore import QObject, Qt, pyqtSignal, QTimer
 import threading
 import sqlite3
 from ..BackEnd.BackEndSignal import signals
+from . import notifications
 # users = client.getAllUsers()
 
 # myusername = client.getTheUsername()
@@ -49,16 +50,7 @@ class MainPage(QWidget):
         
         # Create a QListWidget to display the users
         self.users_list = QListWidget(self)
-        self.users_list.setStyleSheet("background-color: #e5ddd5;")  
-
-        # self.users_list.clicked.connect(self.onUserClick)
-
-        # # Add each user to the list
-        # for i, user in enumerate(self.users):
-        #     user_item = QListWidgetItem(f"{user}")  # Display name and last message
-        #     #user_item.setData(Qt.UserRole, last_messages[i])  # Store the last message for each user
-        #     self.users_list.addItem(user_item)
-        
+        self.users_list.setStyleSheet("background-color: #e5ddd5;") 
         
         for i, user in enumerate(self.users):
             user_item = QListWidgetItem(f"{user}")  # Display name and last message
@@ -79,18 +71,18 @@ class MainPage(QWidget):
 
         # Open the chat window with the selected user
         client.addToInChat(user)
-        self.chat_window = MessagingWindow(user, last_message, myusername)
+        self.chat_window = MessagingWindow(user, myusername)
         self.chat_window.show()  # Show the window properly, make sure this is not closed immediately
         
         
 
 class MessagingWindow(QWidget):
-    def __init__(self, user, last_message, myusername):
+    def __init__(self, user, myusername):
         super().__init__()
 
 
         self.user = user
-        self.last_message = last_message
+        
         self.setWindowTitle(f"Chat with {self.user}")
         self.setGeometry(100, 100, 400, 600)
         self.setStyleSheet("background-color: #e5ddd5;")  # WhatsApp-style background
@@ -107,6 +99,9 @@ class MessagingWindow(QWidget):
 
         self.initUI(myusername)
         self.showHistory(self.user, myusername)
+        self.showUnread(self.user, myusername)
+        
+    
 
     def showContent(self, message, ownUsername):
         print("SHOWING CONTENT")
@@ -122,6 +117,7 @@ class MessagingWindow(QWidget):
             else:
                 self.imgMessageHist(message[3],"left")
                 
+
 
             
     def imgMessageHIST(self, msg, alignment):
@@ -176,6 +172,26 @@ class MessagingWindow(QWidget):
         for message in history:
             self.showContent(message, myusername)
         #self.send_button.clicked.connect(self.sendMessage)
+        
+    def showUnread(self, myusername, user):
+         # [source, destination, message_type, message ]
+        unread = client.getUnread(user, myusername)
+        print("hone l unread")
+        print(unread)
+        if len(unread)==0:
+            return
+        else:
+            unread_separator = QLabel("Unread Chats", self.messages_container)
+            unread_separator.setAlignment(Qt.AlignCenter)
+            unread_separator.setStyleSheet("""
+            color: gray;
+            font-style: italic;
+            margin: 10px 0;
+        """)
+            self.messages_layout.addWidget(unread_separator)
+            for message in unread:
+                notifications.getInfoNotification("Faird", "Incoming Message", self)
+                self.textMessageHist(message,"left")
         
     def initUI(self, myusername):
         # Main layout
@@ -237,8 +253,8 @@ class MessagingWindow(QWidget):
             font-size: 14px;
         """)
         self.input_field.setPlaceholderText("Type your message here...")
-        msgSocket = client.handle_messaging(myusername, self.user)
-        self.input_field.returnPressed.connect(lambda: self.sendtextMessage(msgSocket,myusername))
+       # msgSocket = client.handle_messaging(myusername, self.user)
+        self.input_field.returnPressed.connect(lambda: self.sendtextMessage(myusername))
         #self.input_field.returnPressed.connect(self.sendtextMessage)  # Send message on Enter key
         input_layout.addWidget(self.input_field)
 
@@ -263,7 +279,7 @@ class MessagingWindow(QWidget):
 
 
     #do u see this
-    def sendtextMessage(self, msgSocket, myusername):
+    def sendtextMessage(self, myusername):
         # Get the typed message
         message = self.input_field.text().strip()
         
@@ -271,7 +287,8 @@ class MessagingWindow(QWidget):
         username = myusername
         msgtype = "TEXT"
         #msgSocket = client.handle_messaging(username, target)
-        client.sendChatClient(msgSocket, username, target, msgtype, message)
+        client.sendChatClient(username, target, msgtype, message)
+        print("msg sent to chat client")
         
         self.textMessageHist(message, "right")
 
@@ -363,7 +380,7 @@ class MessagingWindow(QWidget):
 
    
     def textMessageHist(self, message, align):
-
+        #print("TEXT MESSAGE HIST")
 
         if message:  # Only proceed if the message is not empty
             # Create a message box
@@ -371,6 +388,8 @@ class MessagingWindow(QWidget):
             if isinstance(message, bytes):
                 message = message.decode('utf-8')
 
+            print("aam bebaat htis: ")
+            print(message)
             message_box = QFrame(self.messages_container)
             message_box.setStyleSheet("""
                 background-color: #DCF8C6;

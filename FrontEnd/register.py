@@ -4,7 +4,7 @@ import queue
 from . import notifications
 import time
 from PyQt5.QtCore import QTimer
-subprocess.run([sys.executable, "-m", "pip", "install", "pyqt5"])
+
 
 from PyQt5.QtWidgets import (
     QMainWindow, QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, 

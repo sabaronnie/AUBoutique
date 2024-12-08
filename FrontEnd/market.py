@@ -4,8 +4,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt
-
+from . import notifications
 from ..BackEnd import client
+from . import chat
 wallet1 = 100
 
 # Sample product data
@@ -64,7 +65,7 @@ def confirmrating(star_butts, rating_label, updatedrating, i, product):
         rate(star_butts, rating_label, updatedrating, i, product)
 
 # Function to show product details
-def show_product_details(product):
+def show_product_details(self, product, username):
     dialog = QDialog()
     dialog.setWindowTitle(f"Details of {product['name']}")
     dialog.setGeometry(200, 200, 500, 400)
@@ -118,6 +119,7 @@ def show_product_details(product):
         f"Name: {product['name']}",
         f"Price: {product['price']}",
         f"Description: {product['description']}",
+        f"Quantity: {product['quantity']}",
         f"Rating: {product['rating']}",
         f"Owner: {product['owner']}"
     ]
@@ -142,30 +144,33 @@ def show_product_details(product):
     """)
 
 
-    def buy_action():
-        response = client.buyProducts(product)
+    def buy_action(dialog):
+        print("buying ")
+        response = client.buyProducts(product['name'], product['owner'])
+        print("buying productss")
         if response == "SUCCESS":
-            successfulBuy()
+            successfulBuy(dialog)
         elif response == "INSUFFICIENT_FUNDS":
             notEnoughMon()
         elif response == "OWN_PRODUCT":
             ownProduct()
             
-    def successfulBuy():
-        QMessageBox.information(dialog, "Purchase", "Thank you for your purchase")
+    def successfulBuy(dialog):
+        print("nice")
+        notifications.getSuccessNotification("Success!", "", dialog)
         dialog.accept()
     def notEnoughMon():
-        QMessageBox.information(dialog, "Balance", "Not enough money")
+        print("nice")
         dialog.accept() 
     def ownProduct():
-        QMessageBox.information(dialog, "Problem", "You cannot buy your own products!")
+        print("nice")
         dialog.accept()  
      
 
-    buy_button.clicked.connect(buy_action)
+    buy_button.clicked.connect(lambda: buy_action(dialog))
     layout.addWidget(buy_button)
 
-    back_button = QPushButton("Back", dialog)
+    back_button = QPushButton("Chat", dialog)
     back_button.setStyleSheet("""
         QPushButton {
             background-color: #FFC107;
@@ -178,12 +183,14 @@ def show_product_details(product):
             background-color: #FFA000;
         }
     """)
-    back_button.clicked.connect(dialog.accept)
+    back_button.clicked.connect(lambda: openChat(product['owner'], username))
     layout.addWidget(back_button)
 
     dialog.setLayout(layout)
     dialog.exec_()
-
+def openChat(user, myusername):
+    chat_window = chat.MessagingWindow(user, myusername)
+    chat_window.show()
 # Function to create the main product grid frame
 def create_product_grid(query=""):
     container = QWidget()

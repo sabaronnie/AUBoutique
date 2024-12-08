@@ -4,13 +4,10 @@ from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
 from ..BackEnd import client
 
-purchasedProducts = [("Cleaner", 4.5, "tony","empty.png"),("Dish", 3, "tony", "empty.png"),("Cleaner", 3.4, "tony","empty.png"),("Cleaner", 4.8, "tony", "empty.png")]
-my_products = [("Ball", "4.5", "/path/to/macbook.jpg"),("Fork", "4.7", "/path/to/iphone.jpg"), ("Water bottle", 3.2, "star.png")]
 
-#purchasedProducts = client.purchasedProductsArray(username, currency)
 
 class UserInfoPanel(QWidget):
-    def __init__(self):
+    def __init__(self, username):
         super().__init__()
 
         # Set up font
@@ -27,12 +24,11 @@ class UserInfoPanel(QWidget):
         self.layout.addWidget(self.title_label)
 
         # User info fields
-        self.add_user_info("Name: Anthony Kanaan")
-        self.add_user_info("Email: anthonyjohn@gmail.com")
-        self.add_user_info("Username: ")
+
+        self.add_user_info(f"Username: {username}")
 
         # Currency selection dropdown
-        self.add_currency_dropdown()
+        self.add_currency_dropdown(username)
 
         # Panel container
         self.panel = QWidget()
@@ -50,7 +46,7 @@ class UserInfoPanel(QWidget):
         label.setStyleSheet("color: white;")
         self.layout.addWidget(label)
 
-    def add_currency_dropdown(self):
+    def add_currency_dropdown(self, username):
         # Currency selection label
         currency_label = QLabel("Select Currency:")
         currency_label.setFont(self.font)
@@ -71,24 +67,15 @@ class UserInfoPanel(QWidget):
         """)
 
         # Connect the dropdown to handle currency change
-        self.currency_dropdown.currentTextChanged.connect(self.on_currency_change)
+        self.currency_dropdown.currentTextChanged.connect(lambda currency: self.on_currency_change(username, currency))
         self.layout.addWidget(self.currency_dropdown)
 
-#ma  aam besmaa shi
-#eh eh
-    def on_currency_change(self, currency):
+    def on_currency_change(self, username, currency):
         print(f"Selected currency: {currency}")  # Replace with actual functionality
-        #create aa clientside function that comminucates with the server and changes the currency
-        #we call this function here.
-        
-        #eh eh
-        # lek hallae enta bas teshteghil, 3melete a list of all the 
-
-
-
+        client.setUserCurrency(username, currency)
 
 class ProductItem(QFrame):
-    def __init__(self, name, rating, image_path):
+    def __init__(self, name, buyers):
         super().__init__()
 
         # Set up layout
@@ -96,10 +83,10 @@ class ProductItem(QFrame):
         item_layout = QHBoxLayout()
 
         # Product image
-        self.product_image = QLabel()
-        pixmap = QPixmap(image_path).scaled(100, 100, Qt.KeepAspectRatio)
-        self.product_image.setPixmap(pixmap)
-        item_layout.addWidget(self.product_image)
+        #self.product_image = QLabel()
+        #pixmap = QPixmap(image_path).scaled(100, 100, Qt.KeepAspectRatio)
+        #self.product_image.setPixmap(pixmap)
+        #item_layout.addWidget(self.product_image)
 
         # Product details
         details_layout = QVBoxLayout()
@@ -108,16 +95,23 @@ class ProductItem(QFrame):
         self.product_name.setStyleSheet("color: black;")
         details_layout.addWidget(self.product_name)
 
-        self.product_rating = QLabel(f"Rating: {rating} ★")
-        
-        self.product_rating.setFont(QFont("Sans-serif", 13))
-        self.product_rating.setStyleSheet("color: black;")
-        details_layout.addWidget(self.product_rating)
+        #self.product_rating = QLabel(f"Rating: {rating} ★")
+        #self.product_rating.setFont(QFont("Sans-serif", 13))
+        #self.product_rating.setStyleSheet("color: black;")
+        #details_layout.addWidget(self.product_rating)
+
+        # Add buyers
+        buyers_label = QLabel(f"Buyers: {', '.join(buyers) if buyers else 'No buyers yet'}")
+        buyers_label.setFont(QFont("Sans-serif", 13))
+        buyers_label.setStyleSheet("color: black;")
+        details_layout.addWidget(buyers_label)
 
         item_layout.addLayout(details_layout)
         self.setLayout(item_layout)
+
+
 class PurchasedProductItem(QFrame):
-    def __init__(self, name, rating, owner, image_path):
+    def __init__(self, name, owner):
         super().__init__()
 
         # Set up layout
@@ -125,24 +119,23 @@ class PurchasedProductItem(QFrame):
         item_layout = QHBoxLayout()
 
         # Product image
-        self.product_image = QLabel()
-        pixmap = QPixmap(image_path).scaled(100, 100, Qt.KeepAspectRatio)
-        self.product_image.setPixmap(pixmap)
-        item_layout.addWidget(self.product_image)
+        #self.product_image = QLabel()
+        #pixmap = QPixmap(image_path).scaled(100, 100, Qt.KeepAspectRatio)
+        #self.product_image.setPixmap(pixmap)
+        #item_layout.addWidget(self.product_image)
 
         # Product details
         details_layout = QVBoxLayout()
-        self.product_name = QLabel(name)
+        self.product_name = QLabel(f"Product name: {name}")
         self.product_name.setFont(QFont("Sans-serif", 13))
         self.product_name.setStyleSheet("color: black;")
         details_layout.addWidget(self.product_name)
-
-        self.product_rating = QLabel(f"Rating: {rating} ★")
-        self.product_owner = QLabel(f"Owner: {owner} ")
+        print("This is the product name", name)
+        #self.product_rating = QLabel(f"Rating: {rating} ★")
+        print("This is the owner's name", owner)
+        self.product_owner = QLabel(f"Owner: {owner}")
         self.product_owner.setFont(QFont("Sans-serif", 13))
-        self.product_rating.setFont(QFont("Sans-serif", 13))
-        self.product_rating.setStyleSheet("color: black;")
-        details_layout.addWidget(self.product_rating)
+        self.product_owner.setStyleSheet("color: black;")
         details_layout.addWidget(self.product_owner)
 
         item_layout.addLayout(details_layout)
@@ -150,7 +143,7 @@ class PurchasedProductItem(QFrame):
 
 
 class ProductsPanel(QWidget):
-    def __init__(self, title, products):
+    def __init__(self, username, title, products):
         super().__init__()
 
         self.layout = QVBoxLayout()
@@ -161,10 +154,10 @@ class ProductsPanel(QWidget):
         self.products_label.setFont(QFont("Helvetica", 13, QFont.Bold))
         self.products_label.setStyleSheet("color: black;")
         self.layout.addWidget(self.products_label)
-
         # Add product items
         for product in products:
-            product_item = ProductItem(product[0], product[1], product[2])
+            buyers = client.getBuyers(username, product)
+            product_item = ProductItem(product, buyers)  # Include buyers
             self.layout.addWidget(product_item)
 
         # Create a panel for the product items
@@ -176,6 +169,8 @@ class ProductsPanel(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setWidget(self.panel)
+
+
 class PurchasedProductsPanel(QWidget):
     def __init__(self, title, products):
         super().__init__()
@@ -190,8 +185,12 @@ class PurchasedProductsPanel(QWidget):
         self.layout.addWidget(self.products_label)
 
         # Add product items
+        print("Printing products")
+        print(products)
+        print("purchased products array of dictionaries is empty")
+             
         for product in products:
-            product_item = PurchasedProductItem(product[0], product[1], product[2], product[3])
+            product_item = PurchasedProductItem(product['name'], product['owner'])
             self.layout.addWidget(product_item)
 
         # Create a panel for the product items
@@ -205,9 +204,8 @@ class PurchasedProductsPanel(QWidget):
         self.scroll_area.setWidget(self.panel)
 
 
-
 class profileInfo(QWidget):
-    def __init__(self):
+    def __init__(self, username):
         super().__init__()
 
         self.setWindowTitle("User Profile")
@@ -219,22 +217,20 @@ class profileInfo(QWidget):
         self.setStyleSheet("background-color: #F5F5DC;")
 
         # Left side: User info
-        self.user_info_panel = UserInfoPanel()
+        self.user_info_panel = UserInfoPanel(username)
         self.main_layout.addWidget(self.user_info_panel.scroll_area)
 
         # Right side: Products (My Products and Purchased Products)
-        self.my_products = [
-            ("Apple MacBook Pro M4", "4.5", "/path/to/macbook.jpg"),
-            ("Apple iPhone 15 Pro", "4.7", "/path/to/iphone.jpg"),
-        ]
-        self.purchased_products = [
-            ("Apple Pencil 2nd Generation", "3.7", "/path/to/pencil.jpg"),
-            ("Airpods Pro 2", "4.5", "/path/to/airpods.jpg"),
-        ]
+        
 
-        self.my_products_panel = ProductsPanel("My Products", self.my_products)
+        my_products = client.populateProductsArray()
+        productList = []
+        for prod in my_products:
+            if prod["owner"] == username:
+                productList.append(prod["name"])
+        self.my_products_panel = ProductsPanel(username, "My Products", productList)
         self.main_layout.addWidget(self.my_products_panel.scroll_area)
-
+        purchasedProducts = client.purchasedProductsArray(username)
         self.purchased_products_panel = PurchasedProductsPanel("Purchased Products", purchasedProducts)
         self.main_layout.addWidget(self.purchased_products_panel.scroll_area)
 
@@ -246,7 +242,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     # Create and show the main window
-    window = profileInfo()
+    window = profileInfo("Farid")
     window.show()
 
     sys.exit(app.exec_())

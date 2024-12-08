@@ -3,7 +3,7 @@ import sys
 #sys.path.append("modules") 
 import subprocess
 
-subprocess.run([sys.executable, "-m", "pip", "install", "pyqt5"])
+# subprocess.run([sys.executable, "-m", "pip", "install", "pyqt5"])
 import sys
 from PyQt5.QtWidgets import (QGridLayout, QStackedLayout, QMainWindow, QApplication, QTextEdit, QFrame, QScrollArea, QTableWidgetItem, QFileDialog, QTableWidget, 
 QFormLayout, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QSpinBox, QTabWidget, QMessageBox)

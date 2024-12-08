@@ -1,6 +1,6 @@
 import sys
 import sqlite3
-from PyQt5.QtWidgets import QGridLayout, QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QDialog, QDialogButtonBox, QLineEdit
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QGridLayout, QApplication, QMainWindow, QScrollArea, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QDialog, QDialogButtonBox, QLineEdit, QMessageBox
 from PyQt5.QtGui import QPixmap, QIcon, QPainter, QColor
 from PyQt5.QtCore import Qt, QSize
 from .market import show_product_details
@@ -21,11 +21,6 @@ from ..BackEnd import client
 db = sqlite3.connect('db.AUBoutique')
 db.execute("PRAGMA foreign_keys=on")
 cursor = db.cursor()
-
-
-
-
-
 class General1(QMainWindow):
     def __init__(self, username, password):
         super().__init__()
@@ -63,6 +58,7 @@ class General1(QMainWindow):
         # Add the stacked widget to hold the content for each tab
         main_layout.addWidget(self.stacked_widget)
 
+        
         # Create the content for each tab
         self.create_tab_content(username, password, products)
 
@@ -137,7 +133,7 @@ class General1(QMainWindow):
         #use cursor hon
         # 
         # Tab buttons
-        for i, page in enumerate(["Home", "Create a Product", "Chat", "Profile", "Wallet"]):  # Added "Chat" tab
+        for i, page in enumerate(["Home", "Create a Product", "Chat", "Profile", "Wallet", "Log Out"]):  # Added "Chat" tab
             btn = QPushButton(page)
             btn.setStyleSheet("""
                 QPushButton {
@@ -182,12 +178,20 @@ class General1(QMainWindow):
             self.stacked_widget.setCurrentIndex(2)
             self.banner_widget.hide()  # Hide the banner when switching to Chat
         elif sender.text() == "Profile":
+            #self.purchasedProducts = client.purchasedProductsArray(username)
+            # self.my_products = client.populateProductsArray()
+            #self.productList = []
+            #for prod in self.my_products:
+            # if prod["owner"] == username:
+            #     self.productList.append(prod["name"])
             self.stacked_widget.setCurrentIndex(3)
             self.banner_widget.hide()  # Hide the banner when switching to Profile
         elif sender.text() == "Wallet":
             self.stacked_widget.setCurrentIndex(4)
             self.show_wallet_dialog(wallet1, username)
-
+        elif sender.text() == "Log Out":
+            self.stacked_widget.setCurrentIndex(5)
+            self.show_logout_confirmation(username)
     def create_tab_content(self, username, password, products):
         """Creates the content for each tab."""
         
@@ -254,7 +258,7 @@ class General1(QMainWindow):
         chat_widget = MainPage(username, password)  # Use the MainPage class from chat.py
         self.stacked_widget.addWidget(chat_widget)
         
-        profile1_widget1 = profileInfo()
+        profile1_widget1 = profileInfo(username)
         self.stacked_widget.addWidget(profile1_widget1)
 
         # Profile tab content
@@ -294,7 +298,23 @@ class General1(QMainWindow):
             self.home_layout.addWidget(product_widget, row + 1, col)
             # Keep track of the product widget for removal later
             self.product_widgets.append(product_widget)
-            
+    def show_logout_confirmation(self,username):
+        """Displays a confirmation dialog for logging out."""
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setWindowTitle("Log Out")
+        msg_box.setText("Are you sure you want to log out?")
+        msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg_box.setDefaultButton(QMessageBox.No)
+        
+        response = msg_box.exec_()
+        if response == QMessageBox.Yes:
+            print("User confirmed log out")
+            response = client.LogOut(username)
+            if response == "LOGOUT_SUCCESS":
+                self.close()  # Close the MainWindow
+        else:
+            print("User canceled log out")        
     def show_wallet_dialog(self, wallet1, username):
         """Show a dialog with the wallet details and allow adding money."""
         dialog = QDialog(self)
@@ -355,7 +375,22 @@ class General1(QMainWindow):
         product_layout = QVBoxLayout(product_widget)
         product_layout.setSpacing(10)
         
+        # shadow_effect = QGraphicsDropShadowEffect()
+        # shadow_effect.setBlurRadius(10)  # Adjust for more/less blur
+        # shadow_effect.setXOffset(5)  # Horizontal shadow offset
+        # shadow_effect.setYOffset(5)  # Vertical shadow offset
+        # shadow_effect.setColor(QColor(0, 0, 0, 160))  # Semi-transparent black shadow
+        # product_widget.setGraphicsEffect(shadow_effect)
+        
+        shadow_effect = QGraphicsDropShadowEffect()
+        shadow_effect.setBlurRadius(15)  # Adjust for more/less blur
+        shadow_effect.setXOffset(0)  # No horizontal offset
+        shadow_effect.setYOffset(0)  # No vertical offset
+        shadow_effect.setColor(QColor(0, 0, 0, 160))  # Semi-transparent black shadow
+        product_widget.setGraphicsEffect(shadow_effect)
+        
         product_image = QPushButton()
+        #ik
         image_data = client.getProductImage(product["owner"], product["name"])  # Replace 'image' with your key for image bytes
         if image_data:
             pixmap = QPixmap()
@@ -423,8 +458,9 @@ class General1(QMainWindow):
         # laeanno u imported specifically show_product_details enta 
         # Add the product name button to the layout, also centered
         product_layout.addWidget(product_button, alignment=Qt.AlignCenter)
-        product_image.clicked.connect(lambda checked, p=product: show_product_details(p))
-        product_button.clicked.connect(lambda checked, p=product: show_product_details(p))
+        
+        product_image.clicked.connect(lambda checked, p=product: show_product_details(self, p, username))
+        product_button.clicked.connect(lambda checked, p=product: show_product_details(self, p, username))
 
         return product_widget
 

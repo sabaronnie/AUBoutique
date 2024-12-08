@@ -199,6 +199,8 @@ def receiveThread(connection):
                     userQueues[connection]['setNewProductQueue_R'].put(data)
                 elif header == "GET_USER_CURRENCY":
                     userQueues[connection]['getUserCurrencyQueue_R'].put(data)
+                elif header=="IS_ONLINE":
+                    userQueues[connection]['isOnlineQueue_R'].put(data)
     except Exception as e:
         print(e)
         print("Connection was closedd")
@@ -447,8 +449,8 @@ def sendProducts(connection, db):
         print("JSON:")
         print(test)
 
-cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, product TEXT, price INT, FOREIGN KEY(owner) REFERENCES Users(username),  FOREIGN KEY(buyer) REFERENCES Users(username))") 
-db.commit()
+# cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, product TEXT, price INT, FOREIGN KEY(owner) REFERENCES Users(username),  FOREIGN KEY(buyer) REFERENCES Users(username))") 
+# db.commit()
 def sendPurchasedProducts(connection):
     selected_currency = "USD"
     header= "SEND_PRODUCTS"
@@ -456,17 +458,46 @@ def sendPurchasedProducts(connection):
     cursor = db2.cursor()
     
     username = userQueues[connection]['ListProductsQueue_R'].get()
-    cursor.execute("SELECT * FROM Purchases WHERE buyer=?", (username,))
-    productsByUser = cursor.fetchall()
-    userQueues[connection]['sendingQueue'].put((header, str(len(productsByUser))))
+    cursor.execute("SELECT product, owner FROM Purchases WHERE buyer=?", (username,))
+    myPurchases = cursor.fetchall()
     
-    for i in range(len(productsByUser)):
-        print("pp")
-        print(productsByUser[i])
-        test = json.dumps(productsByUser[i])
-        userQueues[connection]['sendingQueue'].put((header, test))
-        print("JSON:")
-        print(test)
+    #userQueues[connection]['sendingQueue'].put((header, str(len(myPurchases))))
+    
+    # theProduct = []
+    # for i in range(len(myPurchases)):
+    #     cursor.execute("SELECT * FROM Products WHERE product_name=?", (myPurchases[i][0],))
+    #     theProduct = cursor.fetchall()
+        #print(productsByUser[i])
+    userQueues[connection]['sendingQueue'].put((header, str(len(myPurchases))))
+    for i in range(len(myPurchases)):
+        userQueues[connection]['sendingQueue'].put((header, json.dumps(myPurchases[i])))
+        # print("JSON:")
+        # print(test)
+        
+# cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, product TEXT, price INT, FOREIGN KEY(owner) REFERENCES Users(username),  FOREIGN KEY(buyer) REFERENCES Users(username))") 
+
+        
+def sendBuyers(connection):
+    selected_currency = "USD"
+    header= "SEND_PRODUCTS"
+    db2 = sqlite3.connect('db.AUBoutique')
+    cursor = db2.cursor()
+    
+
+    username = userQueues[connection]['ListProductsQueue_R'].get()
+    product_name = userQueues[connection]['ListProductsQueue_R'].get()
+    cursor.execute("SELECT buyer FROM Purchases WHERE owner=? AND product=?", (username,product_name))
+    buyers = cursor.fetchall()
+    buyer_list = [row[0] for row in buyers]
+    #userQueues[connection]['sendingQueue'].put((header, str(len(myProducts))))
+    userQueues[connection]['sendingQueue'].put((header, json.dumps(buyer_list)))
+    # for i in range(len(myProducts)):
+    #     print("pp")
+    #     print(myProducts[i])
+    #     test = json.dumps(productsByUser[i])
+    #     userQueues[connection]['sendingQueue'].put((header, test))
+    #     print("JSON:")
+    #     print(test)
 #"CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 
 def sendUsersProducts(connection, db):
@@ -517,37 +548,33 @@ def buyProducts(username, connection, db):
     header = "BUY"
     db = sqlite3.connect('db.AUBoutique')
     cursor = db.cursor()
-    while True:
-        product = userQueues[connection]['buyQueue_R'].get()
-
-        cursor.execute("SELECT username, price, quantity FROM Products WHERE product_name = ? AND status=1", (product,))
-        data = cursor.fetchall()
-            
-        print(data)
-        seller, price, quantity = data[0]
-        if (seller == username):
-            userQueues[connection]['sendingQueue'].put((header, "OWN_PRODUCT"))
-            break
-            #connection.sendall("Product name received".encode('utf-8'))
+    product = userQueues[connection]['buyQueue_R'].get()
+    product_owner = userQueues[connection]['buyQueue_R'].get()
+    cursor.execute("SELECT username, price, quantity FROM Products WHERE product_name = ? AND status=1 AND username=?", (product,product_owner))
+    data = cursor.fetchone()
+        
+    seller, price, quantity = data
+    if (seller == username):
+        userQueues[connection]['sendingQueue'].put((header, "OWN_PRODUCT"))
+        #connection.sendall("Product name received".encode('utf-8'))
+    else:
+        userQueues[connection]['sendingQueue'].put((header, "CONT"))
+        #connection.send("You cannot purchase your own products. Please choose another product to buy.".encode('utf-8'))
+        cursor.execute("SELECT balance FROM Users WHERE username=?", (username,))
+        balance = cursor.fetchone()[0]
+        if(balance < price):
+            userQueues[connection]['sendingQueue'].put((header, "INSUFFICIENT_FUNDS"))
         else:
-            userQueues[connection]['sendingQueue'].put((header, "CONT"))
-            #connection.send("You cannot purchase your own products. Please choose another product to buy.".encode('utf-8'))
-            cursor.execute("SELECT balance FROM Users WHERE username=?", (username,))
-            balance = cursor.fetchone()
-            if(balance < price):
-                userQueues[connection]['sendingQueue'].put((header, "INSUFFICIENT_FUNDS"))
-                break
-            else:
-                userQueues[connection]['sendingQueue'].put((header, "SUCCESS"))
-                quantity -=1
-                cursor.execute("UPDATE Products SET quantity=? WHERE product_name=? AND username=?", (quantity, product, seller))
-                cursor.execute("INSERT INTO Purchases values(?,?,?,?)", (seller, username, product, price ))
+            userQueues[connection]['sendingQueue'].put((header, "SUCCESS"))
+            quantity -=1
+            cursor.execute("UPDATE Products SET quantity=? WHERE product_name=? AND username=?", (quantity, product, seller))
+            cursor.execute("INSERT INTO Purchases values(?,?,?,?)", (seller, username, product, price ))
+            db.commit()
+            
+            if (quantity == 0):
+                cursor.execute("UPDATE Products SET status=0 WHERE product_name=? AND username=?", (product, seller))
                 db.commit()
-                
-                if (quantity == 0):
-                    cursor.execute("UPDATE Products SET status=0 WHERE product_name=? AND username=?", (product, seller))
-                    db.commit()
-                break
+            
 
 
         
@@ -555,18 +582,18 @@ inChatOf = {}
 
 
 #make it a queue 
-def sendChat(username,target, connection):
-    header = "RECV_CHAT"
-    while True:
-        messageToSend = incomingQueues[username].get()
-        if messageToSend.lower() == "exit": 
-            userQueues[connection]['sendingQueue'].put((header, "EXIT_CHAT"))
-            #connection.sendall("EXIT_CHAT".encode('utf-8'))
-            #inChatOf[target] = ""  
-            inChatOf[username] = ""  
-            break
-        userQueues[connection]['sendingQueue'].put((header, messageToSend))
-        #connection.sendall(messageToSend.encode('utf-8'))
+# def sendChat(username,target, connection):
+#     header = "RECV_CHAT"
+#     while True:
+#         messageToSend = incomingQueues[username].get()
+#         if messageToSend.lower() == "exit": 
+#             userQueues[connection]['sendingQueue'].put((header, "EXIT_CHAT"))
+#             #connection.sendall("EXIT_CHAT".encode('utf-8'))
+#             #inChatOf[target] = ""  
+#             inChatOf[username] = ""  
+#             break
+#         userQueues[connection]['sendingQueue'].put((header, messageToSend))
+#         #connection.sendall(messageToSend.encode('utf-8'))
         
 
 def receiveChat(username,target, connection, db):
@@ -681,8 +708,7 @@ def sendImageFile(connection):
 #Handle add product
 def add_product(connection, username,cursor,  db):
     header = "ADD_PRODUCT"
-    userQueues[connection]['sendingQueue'].put((header, "opened"))        #eh eh
-        # lek hallae enta bas teshteghil, 3melete a list of all the 
+    userQueues[connection]['sendingQueue'].put((header, "opened"))
     #connection.sendall("Opened add products now.".encode('utf-8'))
     product_name, quantity, price, description, filepath, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
     #implement when doing gui
@@ -759,6 +785,36 @@ def sendUserCurrency(connection):
     currency = cursor.fetchone()[0]
     userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency))
     
+def setUserCurrency(connection):
+    username = userQueues[connection]['getUserCurrencyQueue_R'].get()
+    currency = userQueues[connection]['getUserCurrencyQueue_R'].get()
+    db = sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
+    cursor.execute("UPDATE Users SET currency=? WHERE username=?", (currency, username))
+    db.commit()
+
+def isOnline(username, connection):
+    db = sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
+    target= userQueues[connection]["isOnlineQueue_R"].get()
+    print("TARGET:")
+    print(target)
+    if target in OnlineUserConnections:
+        userQueues[connection]['sendingQueue'].put(("IS_ONLINE", "ONLINE"))
+    else:
+        userQueues[connection]['sendingQueue'].put(("IS_ONLINE", "NOT_ONLINE"))
+        receivedMsg = userQueues[connection]['isOnlineQueue_R'].get()
+        print("SAVING UNREAD ")
+        print(receivedMsg)
+        cursor.execute("INSERT INTO Messages VALUES (?, ?, ?)", (username, target, receivedMsg))
+        db.commit()
+    #      userQueues[connection]['sendingQueue'].put((header, "ONLINE"))
+    #     info = f"{OnlineUserConnections[target][1]},{OnlineUserConnections[target][2]}"
+    #     userQueues[connection]['sendingQueue'].put((header, info))
+    # else:
+    #     userQueues[connection]['sendingQueue'].put((header, "NOT_ONLINE"))
+
+    
 def handle_client(connection, address):
     
     theQueues = {
@@ -780,7 +836,8 @@ def handle_client(connection, address):
         'FirstQueue_R': queue.Queue(),
         'sendTargetContact_R' : queue.Queue(), #targetDetails
         'setNewProductQueue_R': queue.Queue(),
-        'getUserCurrencyQueue_R': queue.Queue()
+        'getUserCurrencyQueue_R': queue.Queue(),
+        'isOnlineQueue_R': queue.Queue()
     }
     
     userQueues[connection] = theQueues
@@ -815,7 +872,8 @@ def handle_client(connection, address):
             option = userQueues[connection]["FirstQueue_R"].get()
                 #option = connection.recv(1024).decode('utf-8')
             username = myUsername
-                
+            print("FINA COUNTDOWN")
+            print(option)
             if option == "ADD_PRODUCT":
                 add_product(connection, username, cursor, db)
             elif option ==  "VIEW_USERS_PRODUCTS":
@@ -846,6 +904,10 @@ def handle_client(connection, address):
                 sendImageFile(connection)
             elif option=="SEND_PURCHASED_PRODUCTS":
                 sendPurchasedProducts(connection)
+            elif option =="GET_BUYERS":
+                sendBuyers(connection)
+            elif option =="IS_ONLINE":
+                isOnline(username, connection)
             #zet l shi la be2e l options (LIST_PRODUCTS, ...)
    
 server.listen()
