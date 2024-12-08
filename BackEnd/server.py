@@ -698,10 +698,11 @@ def add_product(connection, username,cursor,  db):
 # cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 # db.commit()
     #cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?, ?)", (username, product_name, price, description, filename))
+    status = 1
     cursor.execute("""
-        INSERT INTO Products (username, product_name, quantity, price, currency, desc, filename)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (username, product_name, quantity, price, currency, description, server_file_path))
+        INSERT INTO Products (username, product_name, quantity, price, currency, desc, filename, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (username, product_name, quantity, price, currency, description, server_file_path, status))
     db.commit()
 
     # Fetch all results

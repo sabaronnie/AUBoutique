@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QScrollArea
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout, QFrame, QScrollArea, QComboBox
 from PyQt5.QtGui import QFont, QPixmap
 from PyQt5.QtCore import Qt
 from ..BackEnd import client
@@ -31,6 +31,9 @@ class UserInfoPanel(QWidget):
         self.add_user_info("Email: anthonyjohn@gmail.com")
         self.add_user_info("Username: ")
 
+        # Currency selection dropdown
+        self.add_currency_dropdown()
+
         # Panel container
         self.panel = QWidget()
         self.panel.setStyleSheet("background-color: rgba(44, 47, 51, 0.9); border-radius: 10px; padding: 20px;")
@@ -46,6 +49,34 @@ class UserInfoPanel(QWidget):
         label.setFont(self.font)
         label.setStyleSheet("color: white;")
         self.layout.addWidget(label)
+
+    def add_currency_dropdown(self):
+        # Currency selection label
+        currency_label = QLabel("Select Currency:")
+        currency_label.setFont(self.font)
+        currency_label.setStyleSheet("color: white;")
+        self.layout.addWidget(currency_label)
+
+        # Dropdown menu for currency selection
+        self.currency_dropdown = QComboBox()
+        self.currency_dropdown.addItems(["USD", "EUR", "GBP", "LBP"])  # Add more currencies as needed
+        self.currency_dropdown.setStyleSheet("""
+            QComboBox {
+                background-color: white;
+                color: black;
+                font-size: 14px;
+                padding: 5px;
+                border-radius: 5px;
+            }
+        """)
+
+        # Connect the dropdown to handle currency change
+        self.currency_dropdown.currentTextChanged.connect(self.on_currency_change)
+        self.layout.addWidget(self.currency_dropdown)
+
+    def on_currency_change(self, currency):
+        print(f"Selected currency: {currency}")  # Replace with actual functionality
+        
 
 
 class ProductItem(QFrame):
