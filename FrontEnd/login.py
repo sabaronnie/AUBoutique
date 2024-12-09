@@ -78,7 +78,7 @@ class LoginWindow(QMainWindow):
         Submit.setFixedSize(box_width - 50, 40)
         Submit.setStyleSheet("""
             QPushButton {
-                background-color: #4CAF50;
+                background-color: #34495e;
                 color: white;
                 border: none;
                 padding: 5px 20px;

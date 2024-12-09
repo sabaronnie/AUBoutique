@@ -15,18 +15,13 @@ import select
 import requests
 import json  
 from .BackEndSignal import signals
-#yalla btjarib l 2 clients?
-
-#TODO: viewing ur own buyers
-#TODO: fixing errors and making sure they dont crash 
-#TODO: fixing the msging issue
 
 
 sys.path.append("modules") 
 
 from prettytable import PrettyTable
 
-#dstprt = int(input("Enter the port number of the server you want to connect to: "))]
+
 try:
     dstprt = 9999
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -46,12 +41,8 @@ clientPort = P2PServer.getsockname()[1]
 
 print("myIP: " + clientIP)
 print("myPort: " + str(clientPort))
-# def :
-#     for i in range(50):
-#         print("")
 
 
-# aam jarb its loading
 messageQueue_R = queue.Queue()
 registerQueue_R = queue.Queue()
 loginQueue_R = queue.Queue()
@@ -94,40 +85,26 @@ def receiveThread():
                 #print(remaining)
                 print("while remaining")
             count+=1
-            #receive, remaining = remaining.split(ending, 1)
+
             # Using split and handling cases where the result has one element or two
             split_result = remaining.split(ending, 1)
             
-            #print("toule= " + str(len(split_result)))
             if len(split_result) == 1: #if there was no ending
                 break
             # If split_result has more than one part, unpack it
             elif len(split_result) == 2:
                 receive, remaining = split_result
-            # else:
-            #     # Handle the case where there is only one part
-            #     receive = split_result[0]
-            #     remaining = b""
-        
-            # print(receive)
-            print("BABABAABBA")
+
             header, ptype, data = receive.split(delimiter, 2)
             header = header.decode('utf-8')
             ptype = ptype.decode()
             
-            # if count<15:
-            #     print("SUSHIA")
-            #     print(header)
-            #     print(ptype)
-            #     print(data)
-            #print(header)
             if ptype == "str":
                 data=data.decode('utf-8')
-                #print("Data: " + data)
             elif ptype == "json":
                 data = data.decode()
                 data = json.loads(data)
-                #data = data.decode()
+
             
             print(header)
             if header == "MSG":
@@ -135,10 +112,8 @@ def receiveThread():
             elif header == "REGISTER":
                 registerQueue_R.put(data)
             elif header == "LOGIN":
-                #loginQueue_R.put(data)
                 loginQueue_R.put(data)
             elif header == "AUTH":
-                #authQueue_R.put(data)
                 authQueue_R.put(data)
             elif header == "ADD_PRODUCT":
                 addProductQueue_R.put(data)
@@ -181,13 +156,11 @@ def sendThread():
     global delimiter
     global ending
 
-    print("yi")
     while True:
         #get the prefix
         header, data = sendingQueue.get()
         print(header)
         print(data)
-        #tt = f"{header},{data.decode()}"
         ptype = ""
 
             
@@ -201,28 +174,15 @@ def sendThread():
         else:
             ptype = "other"
         
-        
-        print("PLAN TO SEND THIS")
-        print(ptype)
-        print(data)
         message = header.encode() + delimiter + ptype.encode() + delimiter + data + ending
-        
         client.sendall(message)
-        #client.send(header.encode('utf-8'))  # Send the header first
-        #client.recv(1024)  # Wait for the server to acknowledge the header
-        #client.sendall(data) 
+
 
 receivingThread = threading.Thread(target=receiveThread, args=())
 receivingThread.start()
 sendingThread = threading.Thread(target=sendThread, args=())
 sendingThread.start()
 
-
-
-
-
-        
-   
 def sendImageFile(filename):
     while True:
         file1 = open(filename, "rb")
@@ -232,132 +192,6 @@ def sendImageFile(filename):
         client.sendall(b"END")
 
 
-        
-def validateEmail(email):
-    firstTime = True
-    while True:
-        if firstTime == True:
-            firstTime = False
-            if email[-12:] == "mail.aub.edu":
-                return email
-            else:
-                print("Your email should be an AUB email.")
-
-        mail = input("Enter your mail again: ")
-        if mail[-12:] == "mail.aub.edu":
-                return mail
-        print("Your email should be an AUB email.")
-        
-
-    
-# def Register():
-#     header = "REGISTER"
-#     firstTime = True
-    
-#     while True:
-#         try: 
-#             # if firstTime:
-#             #     sendingQueue.put((header, "REGISTER"))
-#             name = input("Enter your full name: ")
-#             email = input("Enter your email: ")
-#             email = validateEmail(email)
-#             username = input("Enter your username: ")
-#             password = input("\nPassword should be at least 8 characters.\nPassword should be alphanumeric (Contains numbers and letters and not one type only).\nPassword should not start with a special character (!@#$%^&*()-_=+[];:<>?~)\nEnter your password: ")
-#             firstTime = False
-            
-            
-#             message = f"{name},{email},{username},{password}"
-#             sendingQueue.put((header, message))
-#             #client.sendall(message.encode('utf-8'))
-#             response = registerQueue_R.get()
-#             #response = client.recv(1024).decode('utf-8')
-#             if response == "ACCOUNT_CREATED":
-#                 #print("RIGHT HERE")
-#                 sendingQueue.put((header, f"{clientIP} {clientPort}"))
-#                 #client.sendall(f"{clientIP} {clientPort}".encode('utf-8'))
-
-#                 return response
-#             elif response == "ACCOUNT_ALREADY_EXISTS":
-                
-#                 print("\nAccount already exists. Either login or use a different email or username.")
-#                 time.sleep(2)
-#                 return ""
-#             break
-#         except ValueError:
-#             counter = 5
-            
-#             while counter>0:
-#                 print("Password does not meet the necessary requirements.")
-#                 print("- Atleast 8 characters, Less than 64 characters")
-#                 print("")
-#                 print("You will have the chance to retry again in " + str(counter) + " seconds.")
-#                 time.sleep(1)
-#                 counter -= 1
-                
-      
-seconds = 0
-def Timer (countDown):
-    seconds = countDown
-    while seconds > 0:
-        time.sleep(1)
-        seconds-=1
-
-    
-# def Login(LIMIT): #username, password
-#     header = "LOGIN"
-#     counter = 0
-
-#     # sendingQueue.put((header, "LOGIN"))
-#     #client.sendall("LOGIN".encode('utf-8'))
-#     invalidUserPassword = False
-#     counter = 0
-#     while counter < 3: 
-#         # Get username and password, send it to server, and get response depending on validity
-        
-#         # if counter == LIMIT:
-#         #     if seconds > 0:
-#         #         print(f"There are {seconds} seconds left till you can attempt a login again.")
-#         #         return "LOGIN_BLOCKED"
-#         #     else: counter=0 #Reset the login Block
-        
-#         if invalidUserPassword:
-#             print("Invalid Username or Password. Please try again.")
-#             numOfTries = 3-counter
-#             numOfTries1 = str(numOfTries)
-#             print("You have " + numOfTries1 + " tries left")
-#             print("\n")
-#             invalidUserPassword = False
-            
-            
-#         username = input("Username: ")
-#         password = input("Password: ")
- 
-#         sendingQueue.put((header, f"{username} {password}"))
-#         print("send username and pass")
-#         #client.sendall(f"{username} {password}".encode('utf-8'))  
-#         response = loginQueue_R.get()
-#         #response = client.recv(1024).decode('utf-8')   
-#         if response == "CORRECT":
-#             msgListening = threading.Thread(target=constantlylistenforMessages, args=(username,))
-#             msgListening.start()    
-#             print("Success! Welcome " + username)
-#             # Send this client's IP and Port
-#             sendingQueue.put((header, f"{clientIP} {clientPort}"))
-            
-            
-#             offlinesize = int(loginQueue_R.get())
-#             if offlinesize > 0:
-#                 for i in range(offlinesize):
-#                     source, msg = loginQueue_R.get().split(",")
-#                     cursor.execute("INSERT INTO Unread values(?, ?, ?)", (source, username, msg))
-#                     msgHistoryDB.commit()
-            
-                
-#             return f"SIGNED_IN {username}"
-#         elif response == "INVALID_INFO":
-#             counter +=1 
-#             invalidUserPassword = True
-#     return f"NO {username}"
 
 invalidUserPassword = False
            
@@ -366,7 +200,6 @@ globalUsername = ""
 def getTheUsername():
     return globalUsername     
            
-           
 counter = 0
 def Login(username, password): #username, password
     global globalUsername
@@ -374,23 +207,17 @@ def Login(username, password): #username, password
     global counter
 
     sendingQueue.put(("AUTH", "LOGIN"))
-   # invalidUserPassword = False
-    
-    # while counter < 3:  
     sendingQueue.put((header, f"{username} {password}"))
 
     response = loginQueue_R.get()
 
     if response == "CORRECT":
-        print("inside login kamen")
         globalUsername = username
         msgListening = threading.Thread(target=constantlylistenforMessages, args=(username,))
         msgListening.start()    
         sendingQueue.put((header, f"{clientIP} {clientPort}"))
         
         offlinesize = int(loginQueue_R.get())
-        print("OFFLINE SIZE")
-        print(offlinesize)
         if offlinesize > 0:
             for i in range(offlinesize):
                 source, msg = loginQueue_R.get().split(",")
@@ -401,36 +228,24 @@ def Login(username, password): #username, password
         print('inside login, fi meshkle hon')
         counter +=1 
         return (response, 2-counter)
-            #invalidUserPassword = True
-    #Timer()
-    return ("BLOCK", counter)   
                
 def Register(name, email, username, password):
     global globalUsername
     header = "REGISTER"
-    firstTime = True
     sendingQueue.put(("AUTH", "REGISTER"))
-    #while True:
-    print("abel")
     message = f"{name},{email},{username},{password}"
-    print("hon")
     sendingQueue.put((header, message))
     response = registerQueue_R.get()
     if response == "ACCOUNT_CREATED":
         globalUsername = username
-        print("testing")
         msgListening = threading.Thread(target=constantlylistenforMessages, args=(username,))
         msgListening.start()  
         sendingQueue.put((header, f"{clientIP} {clientPort}"))
-        print("yereerere")
         return "ACCOUNT_CREATED"
     elif response == "ACCOUNT_ALREADY_EXISTS":
-        print("testing2")
         return "ACCOUNT_ALREADY_EXISTS"     
         
 
-            
-# TODO: do exit type, -1 to extit, or ask to ask after u enter
 def authentication():
     header = "AUTH"
     print("Welcome to AUBoutique")
@@ -438,7 +253,6 @@ def authentication():
     while True:
         
         choice = 1
-        #LOGIN
         if choice == 1:     
             sendingQueue.put((header, "LOGIN"))           
             response, username = Login(LIMIT).split()
@@ -449,41 +263,27 @@ def authentication():
         elif choice == 2:
             sendingQueue.put((header, "REGISTER"))
             if Register() == "ACCOUNT_CREATED":
-                #exit authentication. now you're logged in, mabrouk
                 return 0 
         elif choice == 3:
             sendingQueue.put((header, "EXIT"))
-            #client.send("EXIT".encode('utf-8'))
             return -1
 
-#mnaamel handling functions la kel choice w mnerjaa mnaamella call bel main function tahet
-def priceValidate(price):
-    MIN_PRICE = 1 #cant sell for smth less than 1$
-    #if price isnt actually a float, itll raise an error
-    # if its less than 1, itll also send an error
-    if float(price) < MIN_PRICE:
-        raise ValueError("Less than 1") 
-    
+  
 def add_product(product_name, quantity, price, description, file_path):
     header = "ADD_PRODUCT"
     sendingQueue.put(("FIRST", "ADD_PRODUCT"))
-    print(addProductQueue_R.get())
-    while True:
-        try: 
-            
-            currency = "USD"
-
-            sendingQueue.put((header, f"{product_name},{quantity},{price},{description},{file_path},{currency}"))
-            response = addProductQueue_R.get()
-            if response == "PRODUCT_ADDED":
-                sendProductImage(file_path)
-                return product_name
-            else: 
-                print(response)
-                print("There was an error in adding your product. Please try again.")
-        except ValueError:
-            print("ERROR: Please only enter a value greater than or equal to 1$.")
-    return product_name
+    try: 
+        currency = "USD"
+        sendingQueue.put((header, f"{product_name},{quantity},{price},{description},{file_path},{currency}"))
+        response = addProductQueue_R.get()
+        if response == "PRODUCT_ADDED":
+            sendProductImage(file_path)
+            return product_name
+        else: 
+            print("There was an error in adding your product. Please try again.")
+    except ValueError:
+        print("ERROR: Please only enter a value greater than or equal to 1$.")
+    
 
 def getUserCurrency(username):
     sendingQueue.put(("FIRST", "GET_USER_CURRENCY"))
@@ -499,9 +299,6 @@ def setUserCurrency(username, currency):
 def getProductImage(username, product_name):
     header = "IMG_PRODUCT"
     sendingQueue.put(("FIRST", "SEND_PRODUCT_IMAGE"))
-    
-    print("LE USERNAME")
-    
     sendingQueue.put((header, product_name))
     sendingQueue.put((header, username))
     
@@ -509,10 +306,6 @@ def getProductImage(username, product_name):
 
 def sendProductImage(filepath):
     header = "IMG_PRODUCT"
-    #sendingQueue.put((header, "VIEW_PICTURE"))
-    #x = client.send("VIEW_PICTURE".encode('utf-8'))
-    # ans = imageProductQueue_R.get().decode('utf-8')
-    #ans = client.recv(1024).decode('utf-8')
     file_name = os.path.basename(filepath)
     sendingQueue.put((header,file_name))
     f = open(filepath, "rb")
@@ -520,57 +313,20 @@ def sendProductImage(filepath):
     sendingQueue.put((header, file_content))
     f.close()
     
-    
-    # if(ans == "No products"):
-    #     print("\nThere are no products are on the market\n")
-    #     return
-    # try:
-    #     product=input("Enter the name of the product you would like to view: ")
-    #     sendingQueue.put((header, product))
-    #     #client.send(product.encode('utf-8')) 
-    #     x = imageProductQueue_R.get() #.decode('utf-8')
-    #     #x=client.recv(1024).decode('utf-8')
-        
-    #     while(x=="Invalid product"):
-    #         product=input("Error: enter the product name again: ")
-    #         sendingQueue.put((header, product))
-    #         #client.send(product.encode('utf-8')) 
-    #         x = imageProductQueue_R.get()
-    #         # client.send(product.encode())
-    #         # x=client.recv(1024).decode('utf-8')
-
-    #     size = int(imageProductQueue_R.get()) #.decode('utf-8'))
-    #     #size=int(client.recv(1024).decode())
-    #     data = imageProductQueue_R.get()
-    #     # COME BACK HERE AND DEFINE THE SIZE SOMEHOW
-    #     #data=client.recv(size)
-    #     image = Image.open(io.BytesIO(data))
-    #     image.show()
-    # except Exception as e:
-    #    print("An error has occured")
-
-#kind of recursion, do i keep?
 def LogOut(username):
     if username in active_sockets:
         del active_sockets[username]
     header = "LOG_OUT"
-    # TODO remove user from online database from here too
     sendingQueue.put(("FIRST", "LOG_OUT"))
-    #client.sendall("LOG_OUT".encode('utf-8'))
     print("Logging out...")
-   # client.sendall("LOGOUT".encode('utf-8'))
     response = LogoutQueue_R.get()
-    #response = client.recv(1024).decode('utf-8') #Wait for confirmation from server
     if response == "LOGOUT_SUCCESS":
         print("You have been successfully logged out.")
         return response
     else:
         print("Error logging out, please try again.")
         return "FAILED"
-    # handle_client()
     
-
-
 def convert(changeThisCurrency,toThisCurrency,amount):
     url = "https://api.currencybeacon.com/v1/convert"
     params = {"from": changeThisCurrency,"to": toThisCurrency,"amount": amount}
@@ -583,10 +339,6 @@ def convert(changeThisCurrency,toThisCurrency,amount):
     else:
         print("Error:", response.status_code, response.text)
 
-
-# cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
-# db.commit()
-
 def populateProductsArray(selected_currency="USD"):
     try:
         returnedArray = []
@@ -594,25 +346,13 @@ def populateProductsArray(selected_currency="USD"):
         sendingQueue.put(("FIRST", "SEND_PRODUCTS"))
         n = int(ListProductsQueue_R.get())
 
-
-#cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
-
         for i in range(n):
             temporary = ListProductsQueue_R.get()
-            print("TEMPORARY: " )
-            print(temporary)
             temporary = json.loads(temporary)
-            print("JSON")
-            print(temporary)
             product_currency = temporary[6]
-            print("The Product Currency is in:")
-            print("product currency", product_currency)  # Assuming currency is at index 9
             price = float(temporary[5])
             if product_currency != selected_currency:
-                #selected_currency = "EURO"
                 price = convert(product_currency, selected_currency, price)
-                print("CONVERT RPICE FROM US TO " + selected_currency )
-                print(price)
             returnedArray.append(
                 {
                     "owner": temporary[0],

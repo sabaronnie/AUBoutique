@@ -10,19 +10,12 @@ from .profile import profileInfo
 from .createproduct import MainWindow
 from ..BackEnd import client
 
-# products = [
-#     {"name": "Green Apple from Batroun, Lebanon.", "price": "$10", "description": "A great product from the lush orchards of Lebanon.","rating": 0, "owner": "Owner 1", "numberOfRatings" : 0},
-#     {"name": "Premium Red Grapes", "price": "$15", "description": "Sweet and fresh red grapes.","rating": 0, "owner": "Owner 2", "numberOfRatings" : 0},
-#     {"name": "Golden Pears", "price": "$12", "description": "Crisp and juicy golden pears.","rating": 0, "owner": "Owner 3", "numberOfRatings" : 0},
-#     {"name": "Exotic Mango", "price": "$20", "description": "Fresh tropical mangoes.", "rating": 0,"owner": "Owner 4", "numberOfRatings" : 0},
-#     {"name": "Fresh Blueberries", "price": "$18", "description": "Organic blueberries.","rating": 0, "owner": "Owner 5", "numberOfRatings" : 0},
-#     {"name": "Ripe Strawberries", "price": "$22", "description": "Sweet and delicious strawberries.","rating": 0, "owner": "Owner 6", "numberOfRatings" : 0},
-# ]
 db = sqlite3.connect('db.AUBoutique')
 db.execute("PRAGMA foreign_keys=on")
 cursor = db.cursor()
 
 products = []
+
 class General1(QMainWindow):
     def __init__(self, username, password):
         global products
@@ -30,14 +23,12 @@ class General1(QMainWindow):
         self.setGeometry(100, 100, 800, 600)
         self.setMinimumSize(985, 820)
         self.setWindowTitle("AUBoutique")
-        #TODO:
+
         cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
         wallet1 = cursor.fetchone()[0]
         currency = client.getUserCurrency(username)
         products = client.populateProductsArray(currency)
         self.initUI(username, password, wallet1, products)
-        
-
 
     def initUI(self, username, password, wallet1, products):
         # Main widget to hold all content
@@ -54,16 +45,33 @@ class General1(QMainWindow):
         self.banner_widget = self.create_banner()
 
         # Create the tab buttons at the bottom of the banner
-        self.tab_buttons_widget = self.create_tab_buttons(wallet1, username)
+        self.tab_buttons_widget = self.create_tab_buttons(wallet1, username, password)
 
         # Add banner and tab buttons to the layout
         main_layout.addWidget(self.banner_widget)
         main_layout.addWidget(self.tab_buttons_widget)
 
+        # Add a Refresh button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setStyleSheet("""
+            QPushButton {
+                background-color: #FF5722;
+                color: white;
+                font-size: 16px;
+                padding: 8px;
+                border-radius: 5px;
+                margin: 10px;
+            }
+            QPushButton:hover {
+                background-color: #E64A19;
+            }
+        """)
+        refresh_button.clicked.connect(lambda: self.refresh_page(username, password))
+        main_layout.addWidget(refresh_button)
+
         # Add the stacked widget to hold the content for each tab
         main_layout.addWidget(self.stacked_widget)
 
-        
         # Create the content for each tab
         self.create_tab_content(username, password)
 
@@ -103,6 +111,17 @@ class General1(QMainWindow):
         # Set the scroll area as the central widget
         self.setCentralWidget(scroll_area)
 
+    def refresh_page(self, username, password):
+        """Refreshes the entire UI by reinitializing."""
+        global products
+        currency = client.getUserCurrency(username)
+        products = client.populateProductsArray(currency)
+        cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
+        wallet11 = cursor.fetchone()[0]
+        self.initUI(username, password, wallet11, products)
+
+# Rest of the methods remain unchanged
+
     def create_banner(self):
         """Creates a banner widget."""
         banner_widget = QWidget()
@@ -128,7 +147,7 @@ class General1(QMainWindow):
         banner_layout.addWidget(banner)
         return banner_widget
 
-    def create_tab_buttons(self, wallet1, username):
+    def create_tab_buttons(self, wallet1, username, password):
         """Creates tab buttons widget."""
         tab_buttons_widget = QWidget()
         tab_buttons_layout = QHBoxLayout(tab_buttons_widget)
@@ -158,14 +177,14 @@ class General1(QMainWindow):
                 }
             """)
             
-            btn.clicked.connect(lambda checked, wallet = wallet1: self.on_tab_button_click(wallet, username))
+            btn.clicked.connect(lambda checked, wallet = wallet1: self.on_tab_button_click(wallet, username, password))
             tab_buttons_layout.addWidget(btn)
 
         tab_buttons_widget.setStyleSheet("background-color: #34495e;")  # Tab buttons background
         return tab_buttons_widget
 
 
-    def on_tab_button_click(self, wallet1, username):
+    def on_tab_button_click(self, wallet1, username, password):
        
         """Handles the tab button click event."""
         global products

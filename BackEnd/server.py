@@ -17,9 +17,9 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind((socket.gethostbyname(socket.gethostname()), prtnm))
 
 
-print("\nMessage to correctors: A picture with name BeirutRaouche.jpg is inserted in the file to try the function of seeing a products picture")
-print("\n                       Please have the file temp.txt in the repository")
-print("\n                       Note: A registered username cannot be used twice")
+#()("\nMessage to correctors: A picture with name BeirutRaouche.jpg is inserted in the file to try the function of seeing a products picture")
+#("\n                       Please have the file temp.txt in the repository")
+#("\n                       Note: A registered username cannot be used twice")
 
 
 
@@ -37,33 +37,13 @@ cursor = db.cursor()
 
 
 
-#TABLE INFO:
-  #Username always stored in lower case
-#cursor.execute("DROP TABLE IF EXISTS Purchases") 
-#db.commit()
-#cursor.execute("DROP TABLE IF EXISTS Products")
-#db.commit()
-#cursor.execute("DROP TABLE IF EXISTS Messages")
-#db.commit()
-#cursor.execute("DROP TABLE IF EXISTS Users")
-#db.commit()
-
 
 
 cursor.execute("CREATE TABLE if not exists Users (name TEXT, mail TEXT UNIQUE, username TEXT PRIMARY KEY UNIQUE, password TEXT, balance REAL, currency TEXT)") #name, email address, username, and password.
 db.commit()
-# ONLINE LIST OF USERS
-# contains IP and Port
-#cursor.execute("CREATE TABLE if not exists Online(username TEXT, ip_address TEXT, port INT, in_chat TEXT, FOREIGN KEY(username) REFERENCES Users(username))") 
-# cursor.execute("CREATE TABLE if not exists Wallet (username TEXT, balance REAL, FOREIGN KEY(username) REFERENCES Users(username,)") #name, email address, username, and password.
-# db.commit()
 
 cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price REAL DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
-
-
-# cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT DEFAULT 0, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
-# db.commit()
 
 cursor.execute("CREATE TABLE if not exists Messages(source TEXT, destination TEXT, message TEXT, FOREIGN KEY(source) REFERENCES Users(username))") 
 db.commit()
@@ -73,14 +53,8 @@ cursor.execute("CREATE TABLE if not exists Purchases(owner TEXT, buyer TEXT, pro
 db.commit()
 Purchases = []
 
-print("dont forget to remove this ya bhim")
-# cursor.execute("INSERT INTO Users values(?,?,?,?,?)", ("ronnie", "rws", "ron", "12345678a", 0))
-# cursor.execute("INSERT INTO Users values(?,?,?,?,?)", ("ronnie", "rwsj", "farid", "12345678a", 0))
 db.commit()
 
-# cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('farid', 'Smartfphone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
-# cursor.execute("INSERT INTO Products (username, product_name, quantity, avgRating, numberofRatings, price, currency, desc, filename, status) VALUES ('ron', 'Smartpgghone', 100, 4.5, 150, 499, 'USD', 'Latest model with high-end specs', 'smartphone.jpg', 1);")
-# db.commit()
 
 def computeAvgRating(owner, product, userRating, cursor, db):
     cursor.execute("SELECT avgRating, numberofRatings FROM Products WHERE product_name=? AND username=?", (product, owner))
@@ -94,25 +68,6 @@ def showRating(owner, product, cursor):
     cursor.execute("SELECT avgRating FROM Products WHERE product_name=? AND username=?", (product, owner))
     rating = cursor.fetchone()
     return rating
-
-# def setOnline(username, ip, port, cursor, db):
-#     cursor.execute("INSERT INTO Online values(?, ?, ?, ?)", (username, ip, port, "false"))
-#     db.commit()
-    
-# def enableChat(username, db):
-#     cursor = db.cursor()
-#     cursor.execute("UPDATE Online SET in_chat=true WHERE username=?", (username))
-    
-# def disableChat(username, db):
-#     cursor = db.cursor()
-#     cursor.execute("UPDATE Online SET in_chat=false WHERE username=?", (username))
-# TODO: When you terminate client, or decide to log out, use this
-
-#gna run
-# deal
-#getAllUsers
-
-
 
 
 userQueues = {}
@@ -130,7 +85,7 @@ def receiveThread(connection):
                     
             while remaining:
                 if count<15:
-                    print(remaining)
+                    #aining)
                     print("while remaining")
                 count+=1
                 #receive, remaining = remaining.split(ending, 1)
@@ -716,10 +671,12 @@ def sendImageFile(connection):
     userQueues[connection]["sendingQueue"].put((header, file_content))
 
 #Handle add product
-def add_product(connection, username,cursor,  db):
+def add_product(connection, username, cursor,  db):
     header = "ADD_PRODUCT"
     userQueues[connection]['sendingQueue'].put((header, "opened"))
     #connection.sendall("Opened add products now.".encode('utf-8'))
+#cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price REAL DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+
     product_name, quantity, price, description, filepath, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
     
     file_name = os.path.basename(filepath)
@@ -730,9 +687,7 @@ def add_product(connection, username,cursor,  db):
     price = float(price)
     quantity = int(quantity)
 
-# cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
-# db.commit()
-    #cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?, ?)", (username, product_name, price, description, filename))
+
     status = 1
     cursor.execute("""
         INSERT INTO Products 
