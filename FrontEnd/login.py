@@ -10,14 +10,14 @@ import threading
 
 class LoginWindow(QMainWindow):
     dataReady1 = pyqtSignal(dict)
-    def __init__(self):
+    def __init__(self, firstpage):
         super().__init__()
         self.setGeometry(0, 0, 700, 500)
         self.setMinimumSize(700, 500)
-        self.initUI()
+        self.initUI(firstpage)
         self.personsCredentials = {}
 
-    def initUI(self):
+    def initUI(self, firstpage):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -117,12 +117,12 @@ class LoginWindow(QMainWindow):
         central_widget.setStyleSheet("padding: 0px; margin: 0px;")
         central_widget.setLayout(mainlayout)
 
-        Submit.clicked.connect(lambda: self.loginButton(username, password))
+        Submit.clicked.connect(lambda: self.loginButton(username, password, firstpage))
     def openMainMenu(self, username, password):
         self.mainmenu = homepage.General1(username.text(), password.text())   
         self.mainmenu.show()    
         
-    def loginButton(self, username1, password1):
+    def loginButton(self, username1, password1, firstpage):
         global myusername
         credentials = {
         'username' : username1.text(),
@@ -138,6 +138,8 @@ class LoginWindow(QMainWindow):
             return
         elif response == "CORRECT":
             self.openMainMenu(username1, password1)
+            self.close()
+            firstpage.close()
 
             
     

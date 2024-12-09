@@ -185,7 +185,6 @@ def sendThread():
     while True:
         #get the prefix
         header, data = sendingQueue.get()
-        print("wzaber khaye")
         print(header)
         print(data)
         #tt = f"{header},{data.decode()}"
@@ -493,7 +492,7 @@ def getUserCurrency(username):
     return user_currency
 
 def setUserCurrency(username, currency):
-    sendingQueue.put(("FIRST", "GET_USER_CURRENCY"))
+    sendingQueue.put(("FIRST", "SET_USER_CURRENCY"))
     sendingQueue.put(("GET_USER_CURRENCY", username))
     sendingQueue.put(("GET_USER_CURRENCY", currency))
     
@@ -606,10 +605,14 @@ def populateProductsArray(selected_currency="USD"):
             print("JSON")
             print(temporary)
             product_currency = temporary[6]
+            print("The Product Currency is in:")
             print("product currency", product_currency)  # Assuming currency is at index 9
             price = float(temporary[5])
             if product_currency != selected_currency:
+                #selected_currency = "EURO"
                 price = convert(product_currency, selected_currency, price)
+                print("CONVERT RPICE FROM US TO " + selected_currency )
+                print(price)
             returnedArray.append(
                 {
                     "owner": temporary[0],
@@ -1088,6 +1091,8 @@ def buyProducts(product_name, username):
     #answer1 = client.recv(1024).decode('utf-8')
 
     if answer == "OWN_PRODUCT":
+        return answer
+    elif answer == "ERROR":
         return answer
     else:
         response = buyQueue_R.get()

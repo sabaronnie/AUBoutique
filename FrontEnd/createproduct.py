@@ -6,9 +6,9 @@ import subprocess
 
 import sys
 from ..BackEnd import client
-from PyQt5.QtWidgets import QGridLayout, QStackedLayout, QMainWindow, QApplication, QTextEdit, QFrame, QScrollArea, QTableWidgetItem, QFileDialog, QTableWidget, QFormLayout, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QSpinBox, QTabWidget, QMessageBox
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QGridLayout, QStackedLayout, QMainWindow, QApplication, QTextEdit, QFrame, QScrollArea, QTableWidgetItem, QFileDialog, QTableWidget, QFormLayout, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QComboBox, QSpinBox, QTabWidget, QMessageBox
 import PyQt5.QtGui as qtg
-from PyQt5.QtGui import QIcon, QFont, QPixmap
+from PyQt5.QtGui import QIcon, QFont, QPixmap, QColor
 from PyQt5.QtCore import Qt 
 
 
@@ -69,12 +69,19 @@ class MainWindow(QMainWindow):
         problemlayout.setSpacing(5)
 
         rectangle = QLabel()
-        rectangle.setFixedSize(260, 420)
+        rectangle.setFixedSize(280, 480)
         #box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.9);
         rectangle.setStyleSheet("""
             background-color: #36393e;
             border-radius: 5px;
         """)
+        
+        shadow_effect = QGraphicsDropShadowEffect()
+        shadow_effect.setBlurRadius(15)  # Adjust for more/less blur
+        shadow_effect.setXOffset(0)  # No horizontal offset
+        shadow_effect.setYOffset(0)  # No vertical offset
+        shadow_effect.setColor(QColor(0, 0, 0, 160))  # Semi-transparent black shadow
+        rectangle.setGraphicsEffect(shadow_effect)
 
         form_layout = QVBoxLayout()
         TopPart = QHBoxLayout()
@@ -236,21 +243,24 @@ class MainWindow(QMainWindow):
         central_widget.setStyleSheet("padding: 0px; margin: 0px;")
         central_widget.setLayout(mainlayout)
         Submit.clicked.connect(lambda: self.validate_inputs(name.text(), price.text(), desc.text(), quantity.text()))
+        
     def validate_inputs(self, name, price, description, quantity):
+        print("NEW PRODUCT QUANTITY")
+        print(quantity)
         """Validate the inputs for all fields.""" 
         # Check if any of the fields are empty
         if not name or not price or not description:
             self.show_error("Please fill in all the fields.")
             return
         price_value = float(price)  # Use float() to allow decimal values as well
-        quantity_value = float(quantity)
-        if price_value < 0:
-            self.show_error("Price cannot be negative.")
+        quantity_value = int(quantity)
+        if price_value < 1:
+            self.show_error("Price cannot be negative or 0.")
             return
-        if quantity_value < 0:
-            self.show_error("Quantity cannot be negative.")
+        if quantity_value <1:
+            self.show_error("Quantity cannot be negative or 0.")
             return
-        client.add_product(name, quantity, price, description, self.imageFile)
+        client.add_product(name, quantity_value, price_value, description, self.imageFile)
 
     def upload_image(self):
         options = QFileDialog.Options()

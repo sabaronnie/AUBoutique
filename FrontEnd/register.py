@@ -19,11 +19,11 @@ from . import notifications
 #import tempclient
 class RegisterWindow(QMainWindow):
     #dataReady = pyqtSignal(dict)
-    def __init__(self):
+    def __init__(self, firstpage):
         super().__init__()
         self.setGeometry(0, 0, 700, 500)
         self.setMinimumSize(800, 522)
-        self.initUI()
+        self.initUI(firstpage)
         self.userInformation  = {}
         
         #self.theQueues = {'fullname' : queue.Queue(), 'email': queue.Queue(), 'username' : queue.Queue(), 'password': queue.Queue()}
@@ -220,7 +220,7 @@ class RegisterWindow(QMainWindow):
         self.mainmenu.show()
         
     
-    def validate_inputs(self, fullname, email, username, password, confirmPassword):
+    def validate_inputs(self, fullname, email, username, password, confirmPassword, firstpage):
         """Validate the inputs for all fields.""" 
         # Check if any of the fields are empty
         if not fullname.text() or not email.text() or not username.text() or not password.text() or not confirmPassword.text():
@@ -273,6 +273,7 @@ class RegisterWindow(QMainWindow):
             
             notifications.getInfoNotification("Creating Your Account...", "", self)
             QTimer.singleShot(2000, lambda: self.finalize_account_creation(username.text(), password.text()))
+            firstpage.close()
 
     def finalize_account_creation(self, username, password):
         notifications.getInfoNotification("Finalizing Details...", "", self)

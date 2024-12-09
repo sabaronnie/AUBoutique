@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
         Register.clicked.connect(self.showRegisterWindow)
     def showLoginWindow(self):
             """Show the LoginWindow when login button is clicked"""
-            self.login_window = LoginWindow()  # Create an instance of LoginWindow
+            self.login_window = LoginWindow(self)  # Create an instance of LoginWindow
             self.login_window.show()  
             self.login_window.dataReady1.connect(self.handleLoginData)
     def GeneralPage(self):
@@ -187,7 +187,7 @@ class MainWindow(QMainWindow):
     
             
     def showRegisterWindow(self):
-        self.registerWindow1 = RegisterWindow()
+        self.registerWindow1 = RegisterWindow(self)
         self.registerWindow1.show() 
         #self.registerWindow1.dataReady.connect(self.handleRegistrationData)
         

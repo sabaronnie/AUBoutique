@@ -1,4 +1,5 @@
 import sys
+import sqlite3
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QLabel, QScrollArea, QFrame, QDialog, QMessageBox, QHBoxLayout, QLineEdit
 )
@@ -7,6 +8,8 @@ from PyQt5.QtCore import Qt
 from . import notifications
 from ..BackEnd import client
 from . import chat
+from ..BackEnd import test
+
 wallet1 = 100
 
 # Sample product data
@@ -31,6 +34,9 @@ def filter_products(query):
             filtered.append(product)
     return filtered
 
+db = sqlite3.connect('db.AUBoutique')
+db.execute("PRAGMA foreign_keys=on")
+cursor = db.cursor()
 
 
 # Function to rate a product
@@ -48,6 +54,9 @@ def rate(star_butts, rating_label, updatedrating, rating, product):
     newRating = ((product["numberOfRatings"] * product["rating"]) + rating1) / (product["numberOfRatings"] + 1)
     product["rating"] = newRating
     product["numberOfRatings"] += 1
+    #TODO:
+    cursor.execute("UPDATE Products SET avgRating=?, numberOfRatings=? WHERE product_name=?", (newRating, product["numberOfRatings"], product["name"]))
+    db.commit()
     updatedrating.setText(f"Updated Rating: {newRating}")
 
 # Function to confirm the rating action
@@ -69,7 +78,7 @@ def show_product_details(self, product, username):
     dialog = QDialog()
     dialog.setWindowTitle(f"Details of {product['name']}")
     dialog.setGeometry(200, 200, 500, 400)
-
+    
     # Set up the layout
     ratinglayout = QHBoxLayout()
     ratelayout = QVBoxLayout()
@@ -80,7 +89,7 @@ def show_product_details(self, product, username):
     updatedrating = QLabel()
     ratelayout.addLayout(ratinglayout)
     ratelayout.addWidget(updatedrating)
-
+    
     star_buttons = []
     for i in range(5):
         button = QPushButton()
@@ -114,10 +123,13 @@ def show_product_details(self, product, username):
 
     layout = QVBoxLayout()
     layout.setSpacing(15)
-
+    # cursor.execute("SELECT currency from Users WHERE username=?", (username,))
+    # curr = cursor.fetchall()[0]
+    currency = client.getUserCurrency(username)
+    newprice = test.convert("USD", currency, product['price'])
     details = [
         f"Name: {product['name']}",
-        f"Price: {product['price']}",
+        f"Price: {newprice} (in {currency})" ,
         f"Description: {product['description']}",
         f"Quantity: {product['quantity']}",
         f"Rating: {product['rating']}",
@@ -151,19 +163,21 @@ def show_product_details(self, product, username):
         if response == "SUCCESS":
             successfulBuy(dialog)
         elif response == "INSUFFICIENT_FUNDS":
-            notEnoughMon()
+            notEnoughMon(dialog)
         elif response == "OWN_PRODUCT":
-            ownProduct()
+            ownProduct(dialog)
+        elif response == "notOntheMarketAnymore":
+            notifications.getErrorNotification("Error", "Cannot buy this product", self)
+
             
     def successfulBuy(dialog):
-        print("nice")
-        notifications.getSuccessNotification("Success!", "", dialog)
-        dialog.accept()
-    def notEnoughMon():
-        print("nice")
+        notifications.getSuccessNotification("Success!", "", self)
         dialog.accept() 
-    def ownProduct():
-        print("nice")
+    def notEnoughMon(dialog):
+        notifications.getErrorNotification("Error", "Not enough money", self)
+        dialog.accept() 
+    def ownProduct(dialog):
+        notifications.getErrorNotification("Error", "Cannot buy your own product", self)
         dialog.accept()  
      
 
@@ -183,12 +197,13 @@ def show_product_details(self, product, username):
             background-color: #FFA000;
         }
     """)
-    back_button.clicked.connect(lambda: openChat(product['owner'], username))
+    back_button.clicked.connect(lambda: openChat(dialog, product['owner'], username))
     layout.addWidget(back_button)
 
     dialog.setLayout(layout)
     dialog.exec_()
-def openChat(user, myusername):
+def openChat(dialog, user, myusername):
+    dialog.accept()
     chat_window = chat.MessagingWindow(user, myusername)
     chat_window.show()
 # Function to create the main product grid frame

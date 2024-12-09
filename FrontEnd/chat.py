@@ -80,23 +80,14 @@ class MessagingWindow(QWidget):
     def __init__(self, user, myusername):
         super().__init__()
 
-
         self.user = user
         
         self.setWindowTitle(f"Chat with {self.user}")
         self.setGeometry(100, 100, 400, 600)
         self.setStyleSheet("background-color: #e5ddd5;")  # WhatsApp-style background
-        
-        # receivingGUI = threading.Thread(target=self.receivetextMessage, args=(self))
-        # receivingGUI.start()
-        signals.new_message.connect(self.receivetextMessage)
-        # receivingGUI = threading.Thread(target=self.receivetextMessage(myusername))
-        # receivingGUI.start()
-        
-        # self.timer = QTimer(self)
-        # self.timer.timeout.connect(self.receivetextMessage)
-        # self.timer.start(100)  
 
+        signals.new_message.connect(self.receivetextMessage)
+        
         self.initUI(myusername)
         self.showHistory(self.user, myusername)
         self.showUnread(self.user, myusername)
@@ -127,8 +118,8 @@ class MessagingWindow(QWidget):
         message_box = QFrame()
         message_box.setStyleSheet("""
             background-color: #DCF8C6;
-            border-radius: 8px;
-            padding: 5px;
+            border-radius: 10px;
+            padding: 8px;
             margin: 2px;
         """)
         message_box.setContentsMargins(0, 0, 0, 0)
@@ -176,8 +167,6 @@ class MessagingWindow(QWidget):
     def showUnread(self, myusername, user):
          # [source, destination, message_type, message ]
         unread = client.getUnread(user, myusername)
-        print("hone l unread")
-        print(unread)
         if len(unread)==0:
             return
         else:
@@ -394,8 +383,8 @@ class MessagingWindow(QWidget):
             message_box.setStyleSheet("""
                 background-color: #DCF8C6;
                 color: black;
-                border-radius: 8px;  /* Smaller corner radius for a tighter look */
-                padding: 5px 8px;  /* Reduced padding for a smaller box */
+                border-radius: 10px;  /* Smaller corner radius for a tighter look */
+                padding: 8px;  /* Reduced padding for a smaller box */
                 margin: 2px;  /* Slightly reduced margin */
             """)
             message_box.setContentsMargins(0, 0, 0, 0)

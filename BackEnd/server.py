@@ -58,7 +58,7 @@ db.commit()
 # cursor.execute("CREATE TABLE if not exists Wallet (username TEXT, balance REAL, FOREIGN KEY(username) REFERENCES Users(username,)") #name, email address, username, and password.
 # db.commit()
 
-cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
+cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price REAL DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 db.commit()
 
 
@@ -552,26 +552,36 @@ def buyProducts(username, connection, db):
     product_owner = userQueues[connection]['buyQueue_R'].get()
     cursor.execute("SELECT username, price, quantity FROM Products WHERE product_name = ? AND status=1 AND username=?", (product,product_owner))
     data = cursor.fetchone()
-        
-    seller, price, quantity = data
-    if (seller == username):
-        userQueues[connection]['sendingQueue'].put((header, "OWN_PRODUCT"))
-        #connection.sendall("Product name received".encode('utf-8'))
-    else:
-        userQueues[connection]['sendingQueue'].put((header, "CONT"))
-        #connection.send("You cannot purchase your own products. Please choose another product to buy.".encode('utf-8'))
-        cursor.execute("SELECT balance FROM Users WHERE username=?", (username,))
-        balance = cursor.fetchone()[0]
-        if(balance < price):
-            userQueues[connection]['sendingQueue'].put((header, "INSUFFICIENT_FUNDS"))
+    print("")
+    print(data)
+    if not data:  
+        userQueues[connection]['sendingQueue'].put((header, "ERROR"))  
+    else: 
+        seller, price, quantity = data
+        if (seller == username):
+            userQueues[connection]['sendingQueue'].put((header, "OWN_PRODUCT"))
+            #connection.sendall("Product name received".encode('utf-8'))
         else:
-            userQueues[connection]['sendingQueue'].put((header, "SUCCESS"))
-            quantity -=1
-            cursor.execute("UPDATE Products SET quantity=? WHERE product_name=? AND username=?", (quantity, product, seller))
-            cursor.execute("INSERT INTO Purchases values(?,?,?,?)", (seller, username, product, price ))
-            db.commit()
-            
-            if (quantity == 0):
+            userQueues[connection]['sendingQueue'].put((header, "CONT"))
+            #connection.send("You cannot purchase your own products. Please choose another product to buy.".encode('utf-8'))
+            cursor.execute("SELECT balance FROM Users WHERE username=?", (username,))
+            balance = cursor.fetchone()[0]
+            if(balance < price):
+                userQueues[connection]['sendingQueue'].put((header, "INSUFFICIENT_FUNDS"))
+            else:
+                if (quantity <= 0):
+                    userQueues[connection]['sendingQueue'].put((header, "notOntheMarketAnymore"))
+                else:
+                    userQueues[connection]['sendingQueue'].put((header, "SUCCESS"))
+                    quantity -=1
+                    cursor.execute("UPDATE Products SET quantity=? WHERE product_name=? AND username=?", (quantity, product, seller))
+                    db.commit()
+                    cursor.execute("UPDATE Users SET balance=? WHERE username=?", (balance - price, username))
+                    db.commit()
+                    cursor.execute("INSERT INTO Purchases values(?,?,?,?)", (seller, username, product, price ))
+                    db.commit()
+                
+            if (quantity <= 0):
                 cursor.execute("UPDATE Products SET status=0 WHERE product_name=? AND username=?", (product, seller))
                 db.commit()
             
@@ -711,25 +721,23 @@ def add_product(connection, username,cursor,  db):
     userQueues[connection]['sendingQueue'].put((header, "opened"))
     #connection.sendall("Opened add products now.".encode('utf-8'))
     product_name, quantity, price, description, filepath, currency = userQueues[connection]['addProductQueue_R'].get().split(",") 
-    #implement when doing gui
-    quantity = 0
     
     file_name = os.path.basename(filepath)
     server_file_path = f"AUBoutique/BackEnd/ServerFiles/{file_name}"  
-    # product_name, price, description, filename = connection.recv(1024).decode('utf-8').split(",")
     print(product_name, price, description)
     print("testing0")
     # PRICE IS INTEGER, FIX IT LATER
-    price = int(price)
+    price = float(price)
+    quantity = int(quantity)
 
 # cursor.execute("CREATE TABLE if not exists Products(username TEXT, product_name TEXT, quantity INT, avgRating REAL DEFAULT 0, numberofRatings INT DEFAULT 0, price INT DEFAULT 1, currency TEXT, desc TEXT, filename TEXT, status INT, FOREIGN KEY(username) REFERENCES Users(username))") 
 # db.commit()
     #cursor.execute("INSERT INTO Products VALUES(?, ?, ?, ?, ?)", (username, product_name, price, description, filename))
     status = 1
     cursor.execute("""
-        INSERT INTO Products (username, product_name, quantity, price, currency, desc, filename, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (username, product_name, quantity, price, currency, description, server_file_path, status))
+        INSERT INTO Products 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (username, product_name, quantity, 0, 0, price, currency, description, server_file_path, status))
     db.commit()
 
     # Fetch all results
@@ -781,15 +789,23 @@ def sendUserCurrency(connection):
     username = userQueues[connection]['getUserCurrencyQueue_R'].get()
     db = sqlite3.connect('db.AUBoutique')
     cursor = db.cursor()
+    print(username)
     cursor.execute("SELECT currency FROM Users WHERE username =? ", (username,))
-    currency = cursor.fetchone()[0]
-    userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency))
+    currency = cursor.fetchone()
+    print("bade ebaat this currency")
+    print(currency)
+    print("opening the tuple")
+    print(currency[0])
+    userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency[0]))
     
 def setUserCurrency(connection):
     username = userQueues[connection]['getUserCurrencyQueue_R'].get()
     currency = userQueues[connection]['getUserCurrencyQueue_R'].get()
     db = sqlite3.connect('db.AUBoutique')
     cursor = db.cursor()
+    print("CURRENTLY SETTING")
+    print(username)
+    print(currency)
     cursor.execute("UPDATE Users SET currency=? WHERE username=?", (currency, username))
     db.commit()
 
@@ -900,6 +916,8 @@ def handle_client(connection, address):
                 setNewBalance(username)
             elif option == "GET_USER_CURRENCY":
                 sendUserCurrency(connection)
+            elif option == "SET_USER_CURRENCY":
+                setUserCurrency(connection)
             elif option =="SEND_PRODUCT_IMAGE":
                 sendImageFile(connection)
             elif option=="SEND_PURCHASED_PRODUCTS":

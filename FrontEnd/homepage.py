@@ -21,15 +21,20 @@ from ..BackEnd import client
 db = sqlite3.connect('db.AUBoutique')
 db.execute("PRAGMA foreign_keys=on")
 cursor = db.cursor()
+
+products = []
 class General1(QMainWindow):
     def __init__(self, username, password):
+        global products
         super().__init__()
         self.setGeometry(100, 100, 800, 600)
         self.setMinimumSize(985, 820)
         self.setWindowTitle("AUBoutique")
+        #TODO:
         cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
         wallet1 = cursor.fetchone()[0]
-        products = client.populateProductsArray()
+        currency = client.getUserCurrency(username)
+        products = client.populateProductsArray(currency)
         self.initUI(username, password, wallet1, products)
         
 
@@ -60,7 +65,7 @@ class General1(QMainWindow):
 
         
         # Create the content for each tab
-        self.create_tab_content(username, password, products)
+        self.create_tab_content(username, password)
 
         # Create a QScrollArea to make the layout scrollable
         scroll_area = QScrollArea()
@@ -133,7 +138,7 @@ class General1(QMainWindow):
         #use cursor hon
         # 
         # Tab buttons
-        for i, page in enumerate(["Home", "Create a Product", "Chat", "Profile", "Wallet", "Log Out"]):  # Added "Chat" tab
+        for i, page in enumerate(["Home", "Sell a Product", "Chat", "Profile", "Wallet", "Log Out"]):  # Added "Chat" tab
             btn = QPushButton(page)
             btn.setStyleSheet("""
                 QPushButton {
@@ -161,17 +166,21 @@ class General1(QMainWindow):
 
 
     def on_tab_button_click(self, wallet1, username):
-       #global products
+       
         """Handles the tab button click event."""
+        global products
         sender = self.sender()
         if sender.text() == "Home":
             self.stacked_widget.setCurrentIndex(0)
             print("ENTERING HOME")
-            products = client.populateProductsArray()
+            currency = client.getUserCurrency(username)
+            #hon we created it, men hota hon as global>
+            products = client.populateProductsArray(currency)
             print("THIS SHOULD APPEAR")
             print(products)
             self.banner_widget.show()
-        elif sender.text() == "Create a Product":
+            self.update()
+        elif sender.text() == "Sell a Product":
             self.stacked_widget.setCurrentIndex(1)
             self.banner_widget.hide()
         elif sender.text() == "Chat":
@@ -192,9 +201,9 @@ class General1(QMainWindow):
         elif sender.text() == "Log Out":
             self.stacked_widget.setCurrentIndex(5)
             self.show_logout_confirmation(username)
-    def create_tab_content(self, username, password, products):
+    def create_tab_content(self, username, password):
         """Creates the content for each tab."""
-        
+        global products
         # Home tab content
         home_container = QWidget()
         home_layout = QGridLayout(home_container)
@@ -208,7 +217,7 @@ class General1(QMainWindow):
 
         search_bar = QLineEdit()
         search_bar.setPlaceholderText("Search products...")
-        search_bar.textChanged.connect(lambda: self.filter_products(username, products))
+        search_bar.textChanged.connect(lambda: self.filter_products(username))
         
         search_bar.setStyleSheet("""
             QLineEdit {
@@ -248,7 +257,7 @@ class General1(QMainWindow):
         self.counter = 0  # Counter to keep track of product placement
         
         self.product_widgets = []  # List to store product widgets
-        self.update_product_display(username, products)  # Initially display all products
+        self.product_display(username)  # Initially display all products
 
         self.stacked_widget.addWidget(home_container)
         
@@ -273,13 +282,15 @@ class General1(QMainWindow):
         wallet_layout.addWidget(QLabel("Your Wallet"))
         wallet_layout.addWidget(QPushButton("Balance: $25 USD"))  # Example wallet balance
         self.stacked_widget.addWidget(wallet_widget)
-    def filter_products(self, username, products):
+    def filter_products(self, username):
+        global products
         """Filters products based on the search query."""
         search_text = self.home_layout.itemAtPosition(0, 0).widget().text().lower()  # Get text from search bar
         filtered_products = [product for product in products if search_text in product['name'].lower()]
 
         self.update_product_display(username, filtered_products)
-    def update_product_display(self, username, products):
+    def product_display(self, username):
+        global products
         """Updates the product display based on filtered products."""
         # Remove existing product widgets
         for widget in self.product_widgets:
@@ -291,6 +302,26 @@ class General1(QMainWindow):
         products_per_row = 4
 
         for i, product in enumerate(products):
+            product_widget = self.create_product_widget(username, product)
+            # Calculate the row and column based on the number of products per row
+            row, col = divmod(i, products_per_row)
+            # Add the product widget to the grid layout
+            self.home_layout.addWidget(product_widget, row + 1, col)
+            # Keep track of the product widget for removal later
+            self.product_widgets.append(product_widget)
+    def update_product_display(self, username, filtered_products):
+        
+        """Updates the product display based on filtered products."""
+        # Remove existing product widgets
+        for widget in self.product_widgets:
+            widget.setParent(None)
+
+        self.product_widgets = []
+
+    # Set the number of products per row (4 per row in this case)
+        products_per_row = 4
+
+        for i, product in enumerate(filtered_products):
             product_widget = self.create_product_widget(username, product)
             # Calculate the row and column based on the number of products per row
             row, col = divmod(i, products_per_row)
@@ -374,13 +405,6 @@ class General1(QMainWindow):
         product_widget = QWidget()
         product_layout = QVBoxLayout(product_widget)
         product_layout.setSpacing(10)
-        
-        # shadow_effect = QGraphicsDropShadowEffect()
-        # shadow_effect.setBlurRadius(10)  # Adjust for more/less blur
-        # shadow_effect.setXOffset(5)  # Horizontal shadow offset
-        # shadow_effect.setYOffset(5)  # Vertical shadow offset
-        # shadow_effect.setColor(QColor(0, 0, 0, 160))  # Semi-transparent black shadow
-        # product_widget.setGraphicsEffect(shadow_effect)
         
         shadow_effect = QGraphicsDropShadowEffect()
         shadow_effect.setBlurRadius(15)  # Adjust for more/less blur
