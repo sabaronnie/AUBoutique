@@ -1,0 +1,5 @@
+IMPORTANT NOTES:
+
+Terminal: 
+aub-s to run the server
+aub to run the client.

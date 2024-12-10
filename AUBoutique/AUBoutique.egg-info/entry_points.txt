@@ -1,0 +1,3 @@
+[console_scripts]
+aub = AUBoutique.FrontEnd.firstpage
+aub-s = AUBoutique.BackEnd.server
