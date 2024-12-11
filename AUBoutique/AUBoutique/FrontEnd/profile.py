@@ -196,7 +196,7 @@ class profileInfo(QWidget):
 
         
 
-        my_products = client.populateProductsArray()
+        my_products = client.myProductsArray()
         productList = []
         for prod in my_products:
             if prod["owner"] == username:

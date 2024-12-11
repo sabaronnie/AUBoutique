@@ -350,6 +350,7 @@ class General1(QMainWindow):
 
         add_money_label = QLabel("Enter amount to add:", dialog)
         layout.addWidget(add_money_label)
+    
 
         add_money_input = QLineEdit(dialog)
         add_money_input.setPlaceholderText("Amount in USD")
@@ -366,7 +367,7 @@ class General1(QMainWindow):
             try:
                 amount = float(add_money_input.text())  
                 if amount > 0:
-                    wallet1 += amount      
+                    wallet1 = wallet1 + amount      
                     client.setNewBalance(wallet1)
                     wallet_label.setText(f"Your balance: {wallet1} USD")  
                     add_money_input.clear()  
@@ -439,7 +440,7 @@ class General1(QMainWindow):
 
 
         product_button = QPushButton(product['name'])
-        product_button.setFixedSize(100, 30)
+        product_button.setFixedSize(150, 50)
         product_button.setStyleSheet("""
         QPushButton {
             background-color: #FF5722;

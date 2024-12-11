@@ -42,6 +42,10 @@ Purchases = []
 db.commit()
 
 
+cursor.execute("SELECT username, password FROM USERS")
+all_users = cursor.fetchall()
+print(all_users)
+
 def computeAvgRating(owner, product, userRating, cursor, db):
     cursor.execute("SELECT avgRating, numberofRatings FROM Products WHERE product_name=? AND username=?", (product, owner))
     oldAvgRating, oldN = cursor.fetchone()
@@ -185,6 +189,8 @@ def getAllUsers(cursor):
 #     resetTries(username)
     
 def getUnsentMSGs(username, connection, header, cursor):
+    db2 = sqlite3.connect('db.AUBoutique')
+    cursor = db2.cursor()
     cursor.execute("SELECT source, message FROM Messages WHERE destination=?", (username,))
     messages = cursor.fetchall() 
     userQueues[connection]['sendingQueue'].put((header, str(len(messages))))
@@ -193,6 +199,8 @@ def getUnsentMSGs(username, connection, header, cursor):
             info = f"{msg[0]},{msg[1]}"
             print(info)
             userQueues[connection]['sendingQueue'].put((header, info))
+            cursor.execute("DELETE FROM Messages WHERE destination=?", (username,))
+            db2.commit()
         
     
 def authentication(connection, address, cursor, db):
@@ -264,7 +272,21 @@ def authentication(connection, address, cursor, db):
         
     
 import json
-
+def sendMYProducts(username, connection, db):
+    selected_currency = "USD"
+    header= "SEND_PRODUCTS"
+    db2 = sqlite3.connect('db.AUBoutique')
+    cursor = db2.cursor()
+    
+    cursor.execute("SELECT * FROM Products WHERE username=?", (username,))
+    productsByUser = cursor.fetchall()
+    userQueues[connection]['sendingQueue'].put((header, str(len(productsByUser))))
+    
+    for i in range(len(productsByUser)):
+        print(productsByUser[i])
+        test = json.dumps(productsByUser[i])
+        userQueues[connection]['sendingQueue'].put((header, test))
+        
 def sendProducts(connection, db):
     selected_currency = "USD"
     header= "SEND_PRODUCTS"
@@ -355,8 +377,14 @@ def buyProducts(username, connection, db):
             userQueues[connection]['sendingQueue'].put((header, "OWN_PRODUCT"))
         else:
             userQueues[connection]['sendingQueue'].put((header, "CONT"))
+            print(username)
+            print("purchasing")
             cursor.execute("SELECT balance FROM Users WHERE username=?", (username,))
-            balance = cursor.fetchone()[0]
+            balance = cursor.fetchone()
+            if not balance:
+                balance = 0
+            else:
+                balance = balance[0]
             if(balance < price):
                 userQueues[connection]['sendingQueue'].put((header, "INSUFFICIENT_FUNDS"))
             else:
@@ -464,8 +492,17 @@ def add_product(connection, username, cursor,  db):
 #         #connection.recv(1024)
         
 def sendCurrentBalance(connection, cursor, username):
+    db = sqlite3.connect('db.AUBoutique')
+    cursor = db.cursor()
     cursor.execute("SELECT balance FROM Users WHERE username = ?", (username,))
-    wallet1 = cursor.fetchone()[0]
+    wallet1 = cursor.fetchall()
+    print("Sending Current Balance")
+    print(username)
+    print(wallet1)
+    if not wallet1:
+        wallet1 = 0
+    else:
+        wallet1 = wallet1[0][0]
     
     userQueues[connection]["sendingQueue"].put(("GET_CURRENT_BALANCE", str(wallet1 )))
 
@@ -473,7 +510,9 @@ def setNewBalance(username):
     db = sqlite3.connect('db.AUBoutique')
     cursor = db.cursor()
     new_balance = userQueues[connection]["setNewProductQueue_R"].get()
-    cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (new_balance, username))
+    print("NEW BALANCE: ")
+    print(new_balance)
+    cursor.execute("UPDATE Users SET balance = ? WHERE username = ?", (float(new_balance), username))
     db.commit()
     userQueues[connection]["sendingQueue"].put(("GET_CURRENT_BALANCE", "OK"))
     
@@ -486,7 +525,11 @@ def sendUserCurrency(connection):
     print(username)
     cursor.execute("SELECT currency FROM Users WHERE username =? ", (username,))
     currency = cursor.fetchone()
-    userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency[0]))
+    if not currency:
+        currency = "USD"
+    else:
+        currency = currency[0]
+    userQueues[connection]['sendingQueue'].put(("GET_USER_CURRENCY", currency))
     
 def setUserCurrency(connection):
     username = userQueues[connection]['getUserCurrencyQueue_R'].get()
@@ -581,6 +624,7 @@ def handle_client(connection, address):
             elif option == "GET_CURRENT_BALANCE":
                 sendCurrentBalance(connection, cursor, username)
             elif option == "SET_NEW_BALANCE":
+                print(username)
                 setNewBalance(username)
             elif option == "GET_USER_CURRENCY":
                 sendUserCurrency(connection)
@@ -594,6 +638,8 @@ def handle_client(connection, address):
                 sendBuyers(connection)
             elif option =="IS_ONLINE":
                 isOnline(username, connection)
+            elif option == "SEND_MY_PRODUCTS":
+                sendMYProducts(username, connection, db)
 
    
 server.listen()

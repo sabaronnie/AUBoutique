@@ -377,6 +377,41 @@ def populateProductsArray(selected_currency="USD"):
         print(f"An error occurred: {type(e).__name__}")
         print(f"Error message: {e}")
         
+def myProductsArray(selected_currency="USD"):
+    try:
+        returnedArray = []
+        header = "SEND_PRODUCTS"
+        sendingQueue.put(("FIRST", "SEND_MY_PRODUCTS"))
+        n = int(ListProductsQueue_R.get())
+
+        for i in range(n):
+            temporary = ListProductsQueue_R.get()
+            temporary = json.loads(temporary)
+            product_currency = temporary[6]
+            price = float(temporary[5])
+            if product_currency != selected_currency:
+                price = conversion.convert(product_currency, selected_currency, price)
+            returnedArray.append(
+                {
+                    "owner": temporary[0],
+                    "name": temporary[1],
+                    "quantity": temporary[2],
+                    "rating": temporary[3],
+                    "numberOfRatings": temporary[4],
+                    "price": price,
+                    "description": temporary[7],
+                    "filename": temporary[8],
+                    "status": temporary[9],
+                    "currency": selected_currency
+                }
+            )
+        print(returnedArray)
+        return returnedArray
+    except Exception as e:
+        # Catch all types of exceptions and print the error name and message
+        print(f"An error occurred: {type(e).__name__}")
+        print(f"Error message: {e}")
+        
 def purchasedProductsArray(username):
     try:
         returnedArray = []
@@ -442,6 +477,8 @@ def setNewBalance(new_balance):
 def getHistory(username, target):
     cursor.execute("SELECT source, destination, message_type, content FROM History WHERE destination = ? OR source = ?", (username, username))
     messages_list = cursor.fetchall()
+    print("HISTORY")
+    print(messages_list)
     return messages_list
             
 def getUnread(username, target):
@@ -487,6 +524,7 @@ def sendChatClient(username, target, msgtype, message):
     sendingQueue.put(("FIRST","IS_ONLINE"))
     sendingQueue.put(("IS_ONLINE", target))
     status = isOnlineQueue_R.get()
+    print("ARE YOU ONLINE?")
     print(status)
     if status == "ONLINE":
         msgSocket = ""
@@ -505,9 +543,6 @@ def sendChatClient(username, target, msgtype, message):
             msgHistoryDB.commit()
     elif status == "NOT_ONLINE":
         sendingQueue.put((header, message))
-        cursor.execute("INSERT INTO History values(?,?,?,?)", (username, target, msgtype, message))   
-        msgHistoryDB.commit()
-
 
 receivedMSG = queue.Queue()
 
@@ -526,7 +561,7 @@ def receiveChatAVAILABLE(username, target, message, signals):
     response = message
 
     if username and target and response:
-        cursor.execute("INSERT INTO History values(?,?,?, ?)", (username, target, "TEXT", response))   
+        cursor.execute("INSERT INTO History values(?,?,?, ?)", (target, username, "TEXT", response))   
         msgHistoryDB.commit()
         
     signals.new_message.emit(message)
@@ -536,6 +571,10 @@ inChat = {}
 
 def addToInChat(target):
     inChat[target] = True
+    
+def removeFromInChat(target):
+    if target in inChat:
+        del inChat[target] 
     
 def checkIfIMinChatOF(target):
     if target in inChat:
@@ -586,7 +625,7 @@ def constantlylistenforMessages(username):
                     receiveChatAVAILABLE(username, target, message, signals) #fix input
                 else: #if not in chat
                     notif.new_message.emit(target)
-                    cursor.execute("INSERT INTO Unread values(?, ?, ?, ?)", (username, target, msgtype, message))
+                    cursor.execute("INSERT INTO Unread values(?, ?, ?, ?)", (target, username, msgtype, message))
                     msgHistoryDB.commit()
 
                 #notification(target)

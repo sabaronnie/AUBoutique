@@ -93,7 +93,6 @@ class MessagingWindow(QWidget):
         super().__init__()
 
         self.user = user
-        
         self.setWindowTitle(f"Chat with {self.user}")
         self.setGeometry(100, 100, 400, 600)
         self.setStyleSheet("background-color: #e5ddd5;")  
@@ -104,7 +103,8 @@ class MessagingWindow(QWidget):
         self.showHistory(self.user, myusername)
         self.showUnread(self.user, myusername)
         
-    
+    def closeEvent(self, event):
+        client.removeFromInChat(self.user)
 
     def showContent(self, message, ownUsername):
         print("SHOWING CONTENT")
@@ -172,8 +172,11 @@ class MessagingWindow(QWidget):
     def showHistory(self, user, myusername):
          # [source, destination, message_type, message ]
         history = client.getHistory(myusername, user)
+        prev = ""
         for message in history:
-            self.showContent(message, myusername)
+            if message[3] != prev:
+                self.showContent(message, myusername)
+                prev = message[3]
 
         
     def showUnread(self, user, myusername):
