@@ -1,12 +1,8 @@
 # AUBoutique 🛍️  
 **Online Boutique Platform – Python · PyQt · SQLite**
 
----
-
 ## Project Overview  
 AUBoutique is a full-stack desktop simulation of an e-commerce platform built as an undergraduate project. It enables product listing, searching, purchases, ratings, and multi-currency support, combined with secure peer-to-peer chat functionality between buyers and sellers.
-
----
 
 ## Key Features  
 - **Custom application layer** for data routing: forwards incoming messages from the server to the correct client thread, ensuring asynchronous, thread-safe communication. 
@@ -17,8 +13,6 @@ AUBoutique is a full-stack desktop simulation of an e-commerce platform built as
 - SQLite backend for lightweight storage and data persistence.
 - Designed a multi-currency mechanism allowing users to view and transact in different currencies seamlessly.
 - Responsive GUI built in PyQt for desktop deployment and user interaction.
-
----
 
 ## Tech Stack  
 | Layer        | Technologies |
